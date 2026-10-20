@@ -97,6 +97,7 @@
     .full-btn{grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:7px}
     .share-btn{background:#e9f6ed;color:#18794e;border:1px solid #c2e5cc}
     .qr-btn{background:#eef6ff;color:#0572ce;border:1px solid #bfdcff}
+    .danger-btn{background:#fdf2f2;color:#d93838;border:1px solid #f7c6c6}
     .event-tools{display:none;gap:6px;margin-top:8px}
     body.is-admin .event-tools{display:flex}
     .event-tools button{border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:7px;padding:4px 7px;font-size:11px;cursor:pointer}
@@ -179,7 +180,7 @@
           </div>
           <div class="form">
             <label>
-              切换已有运单记录
+              切换已有运单记录 (数据库列表)
               <select class="field" id="savedPackagesSelect">
                 <option value="">-- 选择已保存的单号快速编辑 --</option>
               </select>
@@ -213,6 +214,7 @@
             <div class="editor-actions">
               <button class="primary" id="applyBtn">保存并生成专属二维码</button>
               <button class="secondary" id="resetBtn">新建空白单</button>
+              <button class="secondary full-btn danger-btn" id="deletePkgBtn">删除当前单号记录</button>
               <button class="secondary full-btn" id="addBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 5v14M5 12h14"/></svg>新增物流动态节点</button>
               <button class="secondary full-btn qr-btn" id="qrBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>微信扫码查件 / 保存二维码</button>
               <button class="secondary full-btn share-btn" id="shareBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>一键复制查询链接</button>
@@ -244,7 +246,7 @@
       </div>
       <div class="qr-box">
         <div id="qrcode"></div>
-        <p class="qr-tip" id="qrTipText">此二维码包含最新运单数据，微信扫码秒开</p>
+        <p class="qr-tip" id="qrTipText">此二维码永久对应当前单号，管理员修改后扫码自动同步</p>
         <input type="text" id="shortLinkDisplay" class="short-link-input" readonly value="正在生成..." />
         <div class="qr-actions">
           <button class="secondary" id="copyShortLinkBtn">复制链接</button>
@@ -317,6 +319,7 @@
         toast.t = setTimeout(function(){ $('toast').classList.remove('show'); }, 2500);
       }
 
+      // 完美双端同步机制：优先从 URL 动态加密参数读取（保证旧二维码/链接实时更新），并同时维护本地数据库列表
       function loadPackageFromStorage(trackingNo, callback){
         var cleanNo = trackingNo.replace(/\s+/g,'').toUpperCase();
         try {
@@ -337,6 +340,19 @@
           if(callback) callback(true);
         } catch(e){
           if(callback) callback(false);
+        }
+      }
+
+      function deletePackageFromStorage(trackingNo){
+        var cleanNo = trackingNo.replace(/\s+/g,'').toUpperCase();
+        try {
+          localStorage.removeItem('pkg_data_' + cleanNo);
+          var idx = getSavedIndex();
+          var newIdx = idx.filter(function(item){ return item !== cleanNo; });
+          localStorage.setItem('pkg_index', JSON.stringify(newIdx));
+          return true;
+        } catch(e){
+          return false;
         }
       }
 
@@ -371,7 +387,7 @@
           if(data){
             currentData = data;
             render();
-            toast('已切换到单号：' + chosenNo);
+            toast('已调出单号：' + chosenNo);
           } else {
             toast('未找到该单号数据');
           }
@@ -494,7 +510,7 @@
         }
       }
 
-      // 核心保存按钮：每次点击保存，不仅存入本地，并自动通过加密网址参数刷新，确保扫码100%看到最新修改
+      // 【核心保存按钮】：点击保存时，自动将最新数据加密打包并刷新网页，生成自带最新数据的二维码
       $('applyBtn').addEventListener('click', function(){
         applyForm();
         var cleanNo = currentData.n.replace(/\s+/g,'').toUpperCase();
@@ -506,6 +522,16 @@
         window.location.href = window.location.origin + window.location.pathname + '#no=' + cleanNo + '&v=' + encoded;
       });
 
+      // 删除当前订单记录按钮
+      $('deletePkgBtn').addEventListener('click', function(){
+        var cleanNo = currentData.n.replace(/\s+/g,'').toUpperCase();
+        if(confirm('确定要从数据库中删除单号 ' + cleanNo + ' 吗？')){
+          deletePackageFromStorage(cleanNo);
+          updateSavedSelect();
+          toast('单号已删除！');
+        }
+      });
+
       function applyForm(){
         currentData.s = $('statusInput').value;
         currentData.h = $('headlineInput').value.trim() || '—';
@@ -513,7 +539,7 @@
         currentData.d = $('destinationInput').value.trim() || '—';
         currentData.rn = $('recipientNameInput').value.trim() || '张先生';
         currentData.rp = $('recipientPhoneInput').value.trim() || '—';
-        currentData.ra = $('recipientAddressInput').value.trim() || '—';
+        currentData.ra = $('recipientAddressInput').value.trim() || '北京市朝阳区建国路88号';
         currentData.t = $('etaInput').value.trim() || '—';
         currentData.p = $('progressInput').value;
         currentData.n = $('adminTrackingInput').value.trim() || 'KD' + Math.floor(100000000 + Math.random() * 900000000);
@@ -557,7 +583,7 @@
         var cleanNo = currentData.n.replace(/\s+/g,'').toUpperCase();
         $('qrModal').classList.add('open');
         $('shortLinkDisplay').value = syncUrl;
-        $('qrTipText').textContent = '当前单号：' + cleanNo + '（微信扫码秒开，100%显示最新更新）';
+        $('qrTipText').textContent = '当前单号：' + cleanNo + '（微信扫码秒开，100%显示最新更新内容）';
         renderStandardQRCode(syncUrl);
       });
 
@@ -566,7 +592,7 @@
       $('copyShortLinkBtn').addEventListener('click', function(){
         var link = $('shortLinkDisplay').value;
         if(navigator.clipboard && navigator.clipboard.writeText){
-          navigator.clipboard.writeText(link).then(function(){ toast('查询链接已成功复制！'); });
+          navigator.clipboard.writeText(link).then(function(){ toast('同步链接已成功复制！'); });
         } else {
           prompt('请复制以下链接：', link);
         }
@@ -590,7 +616,7 @@
         var syncUrl = getSyncUrl();
         if(navigator.clipboard && navigator.clipboard.writeText){
           navigator.clipboard.writeText(syncUrl).then(function(){
-            toast('查询链接已复制！');
+            toast('同步链接已复制！');
           }).catch(function(){ prompt('请复制以下链接：', syncUrl); });
         } else {
           prompt('请复制以下链接：', syncUrl);
@@ -716,6 +742,7 @@
                 if(parsed.e) currentData.e = parsed.e;
                 var matchNo = hash.match(/no=([^&]+)/);
                 if(matchNo && matchNo[1]) currentData.n = matchNo[1];
+                savePackageToStorage(currentData);
                 render();
                 updateAdminUI();
                 return;
