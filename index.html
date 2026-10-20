@@ -180,12 +180,6 @@
           </div>
           <div class="form">
             <label>
-              切换已有运单记录 (数据库列表)
-              <select class="field" id="savedPackagesSelect">
-                <option value="">-- 选择已保存的单号快速编辑 --</option>
-              </select>
-            </label>
-            <label>
               快递单号
               <div class="inline-field">
                 <input class="field" id="adminTrackingInput" value="KD824731095" />
@@ -214,7 +208,6 @@
             <div class="editor-actions">
               <button class="primary" id="applyBtn">保存并生成专属二维码</button>
               <button class="secondary" id="resetBtn">新建空白单</button>
-              <button class="secondary full-btn danger-btn" id="deletePkgBtn">删除当前单号记录</button>
               <button class="secondary full-btn" id="addBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 5v14M5 12h14"/></svg>新增物流动态节点</button>
               <button class="secondary full-btn qr-btn" id="qrBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>微信扫码查件 / 保存二维码</button>
               <button class="secondary full-btn share-btn" id="shareBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>一键复制查询链接</button>
@@ -246,7 +239,7 @@
       </div>
       <div class="qr-box">
         <div id="qrcode"></div>
-        <p class="qr-tip" id="qrTipText">此二维码永久对应当前单号，管理员修改后扫码自动同步</p>
+        <p class="qr-tip" id="qrTipText">此二维码包含最新运单数据，微信扫码秒开</p>
         <input type="text" id="shortLinkDisplay" class="short-link-input" readonly value="正在生成..." />
         <div class="qr-actions">
           <button class="secondary" id="copyShortLinkBtn">复制链接</button>
@@ -271,6 +264,9 @@
 
   <script>
     (function(){
+      // 每次打开网页时，自动强制彻底清空浏览器中所有残留的历史缓存！
+      localStorage.clear();
+
       var ADMIN_PASSWORD = "Aa112212.";
 
       var defaultData = {
@@ -319,85 +315,9 @@
         toast.t = setTimeout(function(){ $('toast').classList.remove('show'); }, 2500);
       }
 
-      // 完美双端同步机制：优先从 URL 动态加密参数读取（保证旧二维码/链接实时更新），并同时维护本地数据库列表
-      function loadPackageFromStorage(trackingNo, callback){
-        var cleanNo = trackingNo.replace(/\s+/g,'').toUpperCase();
-        try {
-          var localVal = localStorage.getItem('pkg_data_' + cleanNo);
-          if(localVal){
-            callback(JSON.parse(localVal));
-            return;
-          }
-        } catch(e){}
-        callback(null);
-      }
-
-      function savePackageToStorage(dataObj, callback){
-        var cleanNo = dataObj.n.replace(/\s+/g,'').toUpperCase();
-        try {
-          localStorage.setItem('pkg_data_' + cleanNo, JSON.stringify(dataObj));
-          saveToIndex(cleanNo);
-          if(callback) callback(true);
-        } catch(e){
-          if(callback) callback(false);
-        }
-      }
-
-      function deletePackageFromStorage(trackingNo){
-        var cleanNo = trackingNo.replace(/\s+/g,'').toUpperCase();
-        try {
-          localStorage.removeItem('pkg_data_' + cleanNo);
-          var idx = getSavedIndex();
-          var newIdx = idx.filter(function(item){ return item !== cleanNo; });
-          localStorage.setItem('pkg_index', JSON.stringify(newIdx));
-          return true;
-        } catch(e){
-          return false;
-        }
-      }
-
-      function getSavedIndex(){
-        try { return JSON.parse(localStorage.getItem('pkg_index') || '[]'); } catch(e){ return []; }
-      }
-      function saveToIndex(no){
-        var idx = getSavedIndex();
-        var cleanNo = no.replace(/\s+/g,'').toUpperCase();
-        if(idx.indexOf(cleanNo) === -1){
-          idx.unshift(cleanNo);
-          try { localStorage.setItem('pkg_index', JSON.stringify(idx)); } catch(e){}
-        }
-      }
-      function updateSavedSelect(){
-        var idx = getSavedIndex();
-        var select = $('savedPackagesSelect');
-        select.innerHTML = '<option value="">-- 选择已保存的单号快速编辑 --</option>';
-        idx.forEach(function(item){
-          var opt = document.createElement('option');
-          opt.value = item;
-          opt.textContent = item;
-          if(item === currentData.n.replace(/\s+/g,'').toUpperCase()) opt.selected = true;
-          select.appendChild(opt);
-        });
-      }
-
-      $('savedPackagesSelect').addEventListener('change', function(){
-        var chosenNo = this.value;
-        if(!chosenNo) return;
-        loadPackageFromStorage(chosenNo, function(data){
-          if(data){
-            currentData = data;
-            render();
-            toast('已调出单号：' + chosenNo);
-          } else {
-            toast('未找到该单号数据');
-          }
-        });
-      });
-
       function updateAdminUI(){
         if(isUnlocked){
           document.body.classList.add('is-admin');
-          updateSavedSelect();
         } else {
           document.body.classList.remove('is-admin');
         }
@@ -510,7 +430,7 @@
         }
       }
 
-      // 【核心保存按钮】：点击保存时，自动将最新数据加密打包并刷新网页，生成自带最新数据的二维码
+      // 核心保存：每次点击保存，直接将最新数据打包并刷新网页带上加密参数
       $('applyBtn').addEventListener('click', function(){
         applyForm();
         var cleanNo = currentData.n.replace(/\s+/g,'').toUpperCase();
@@ -520,16 +440,6 @@
         });
         var encoded = encodeURIComponent(btoa(encodeURIComponent(dataJson)));
         window.location.href = window.location.origin + window.location.pathname + '#no=' + cleanNo + '&v=' + encoded;
-      });
-
-      // 删除当前订单记录按钮
-      $('deletePkgBtn').addEventListener('click', function(){
-        var cleanNo = currentData.n.replace(/\s+/g,'').toUpperCase();
-        if(confirm('确定要从数据库中删除单号 ' + cleanNo + ' 吗？')){
-          deletePackageFromStorage(cleanNo);
-          updateSavedSelect();
-          toast('单号已删除！');
-        }
       });
 
       function applyForm(){
@@ -543,11 +453,6 @@
         currentData.t = $('etaInput').value.trim() || '—';
         currentData.p = $('progressInput').value;
         currentData.n = $('adminTrackingInput').value.trim() || 'KD' + Math.floor(100000000 + Math.random() * 900000000);
-
-        savePackageToStorage(currentData, function(success){
-          updateSavedSelect();
-          render();
-        });
       }
 
       $('progressInput').addEventListener('input', function(){
@@ -626,17 +531,7 @@
       function searchTracking(){
         var no = $('trackSearch').value.trim();
         if(!no){ toast('请输入有效单号'); return; }
-        var cleanKey = no.replace(/\s+/g,'').toUpperCase();
-        
-        loadPackageFromStorage(cleanKey, function(data){
-          if(data){
-            currentData = data;
-            render();
-            toast('已查到单号【' + cleanKey + '】的物流信息！');
-          } else {
-            toast('未查到单号【' + no + '】的记录');
-          }
-        });
+        toast('当前为单号直联模式，请通过对应的二维码或同步链接查看详情');
       }
 
       $('trackBtn').addEventListener('click', searchTracking);
@@ -671,7 +566,6 @@
         else currentData.e.unshift(item);
         render();
         closeModal();
-        applyForm();
       });
 
       $('timeline').addEventListener('click', function(e){
@@ -682,7 +576,6 @@
         if(b.dataset.delete !== undefined){
           currentData.e.splice(Number(b.dataset.delete), 1);
           render();
-          applyForm();
           toast('节点已删除');
         }
         if(b.dataset.up !== undefined){
@@ -692,7 +585,6 @@
             currentData.e[i-1] = currentData.e[i];
             currentData.e[i] = x;
             render();
-            applyForm();
             toast('节点已上移');
           }
         }
@@ -742,21 +634,11 @@
                 if(parsed.e) currentData.e = parsed.e;
                 var matchNo = hash.match(/no=([^&]+)/);
                 if(matchNo && matchNo[1]) currentData.n = matchNo[1];
-                savePackageToStorage(currentData);
                 render();
                 updateAdminUI();
                 return;
               }
             } catch(e){}
-          }
-          var matchNo = hash.match(/no=([^&]+)/);
-          if(matchNo && matchNo[1]){
-            loadPackageFromStorage(matchNo[1], function(data){
-              if(data) currentData = data;
-              render();
-              updateAdminUI();
-            });
-            return;
           }
         }
         render();
