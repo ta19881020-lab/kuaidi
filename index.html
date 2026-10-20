@@ -384,7 +384,7 @@
         o: '广东省广州市',
         d: '北京市朝阳区',
         t: '10 月 16 日',
-        p: '58',
+        p: 58,
         rn: '张先生',
         rp: '13812345678',
         ra: '北京市朝阳区建国路88号现代城A座1201室',
@@ -600,20 +600,34 @@
           var jsonStr = JSON.stringify(data, null, 2);
           var b64Content = btoa(unescape(encodeURIComponent(jsonStr)));
 
-          fetch(apiUrl + '?ref=' + branch, {
-            headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json' }
-          }).then(function(res){
-            if(res.ok) return res.json().then(function(f){ return f.sha; });
-            return null;
-          }).then(function(sha){
+          // 彻底解决浏览器缓存导致 SHA 不匹配的 Bug (强制 no-store 与时间戳)
+          function getFreshSha(cb){
+            fetch(apiUrl + '?ref=' + encodeURIComponent(branch) + '&_nocache=' + Date.now(), {
+              cache: 'no-store',
+              headers: {
+                'Authorization': 'token ' + token,
+                'Accept': 'application/vnd.github.v3+json',
+                'If-None-Match': ''
+              }
+            }).then(function(res){
+              if(res.ok){
+                return res.json().then(function(f){ cb(f.sha); });
+              }
+              cb(null);
+            }).catch(function(){
+              cb(null);
+            });
+          }
+
+          function executePut(targetSha, isRetry){
             var bodyObj = {
               message: 'Update tracking: ' + data.n,
               content: b64Content,
               branch: branch
             };
-            if(sha) bodyObj.sha = sha;
+            if(targetSha) bodyObj.sha = targetSha;
 
-            return fetch(apiUrl, {
+            fetch(apiUrl, {
               method: 'PUT',
               headers: {
                 'Authorization': 'token ' + token,
@@ -621,15 +635,37 @@
                 'Accept': 'application/vnd.github.v3+json'
               },
               body: JSON.stringify(bodyObj)
+            }).then(function(res){
+              if(res.ok){
+                callback(true);
+              } else {
+                res.json().then(function(err){
+                  // 如果报 409 冲突或者 does not match，尝试提取目标 SHA 自动重试一次
+                  if(!isRetry && (res.status === 409 || (err.message && err.message.indexOf('does not match') > -1))){
+                    var matchSha = err.message ? err.message.match(/does not match ([a-f0-9]{40})/i) : null;
+                    if(matchSha && matchSha[1]){
+                      executePut(matchSha[1], true);
+                    } else {
+                      getFreshSha(function(freshSha){
+                        if(freshSha && freshSha !== targetSha){
+                          executePut(freshSha, true);
+                        } else {
+                          callback(false, err.message || 'GitHub 写入失败');
+                        }
+                      });
+                    }
+                  } else {
+                    callback(false, err.message || 'GitHub 写入失败');
+                  }
+                });
+              }
+            }).catch(function(err){
+              callback(false, err.message);
             });
-          }).then(function(res){
-            if(res.ok){
-              callback(true);
-            } else {
-              res.json().then(function(err){ callback(false, err.message || 'GitHub 写入失败'); });
-            }
-          }).catch(function(err){
-            callback(false, err.message);
+          }
+
+          getFreshSha(function(sha){
+            executePut(sha, false);
           });
           return;
         }
