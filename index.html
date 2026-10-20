@@ -103,7 +103,7 @@
     .toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);background:var(--ink);color:var(--surface);padding:10px 18px;border-radius:10px;opacity:0;pointer-events:none;transition:.2s;z-index:30;font-size:13px;box-shadow:var(--shadow);text-align:center}.toast.show{opacity:1;transform:translate(-50%,0)}
     .modal{position:fixed;inset:0;background:rgba(5,13,20,.58);display:none;place-items:center;padding:20px;z-index:20}.modal.open{display:grid}.modal-panel{width:min(460px,100%);background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:21px}.modal-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:17px}.modal-head h2{margin:0;font-size:19px}.icon-btn{width:34px;height:34px;display:grid;place-items:center;background:var(--surface-2);border-radius:50%;font-size:22px}.modal .form{padding:0}.modal .primary{padding:11px 14px}
     .qr-box{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px 0}
-    #qrcode{padding:14px;background:#fff;border-radius:14px;box-shadow:0 4px 20px rgba(0,0,0,.08);margin-bottom:14px;min-height:228px;min-width:228px;display:flex;align-items:center;justify-content:center}
+    #qrcode{padding:16px;background:#fff;border-radius:14px;box-shadow:0 4px 20px rgba(0,0,0,.08);margin-bottom:14px;min-height:232px;min-width:232px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line)}
     #qrcode img,#qrcode canvas{display:block;margin:0 auto}
     .qr-tip{font-size:13px;color:var(--muted);text-align:center;margin:0 0 14px}
     .short-link-input{width:100%;font-size:13px;padding:9px 12px;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;color:var(--ink);text-align:center;margin-bottom:10px}
@@ -519,11 +519,10 @@
         $('progressBar').style.width = this.value + '%';
       });
 
-      function getLongUrl(){
+      function getBaseUrl(){
         applyForm();
         var cleanNo = currentData.n.replace(/\s+/g,'').toUpperCase();
-        var jsonStr = encodeURIComponent(JSON.stringify(currentData));
-        return window.location.origin + window.location.pathname + '#no=' + cleanNo + '&data=' + jsonStr;
+        return window.location.origin + window.location.pathname + '#no=' + cleanNo;
       }
 
       function fetchShortUrl(longUrl, callback){
@@ -536,29 +535,30 @@
           .catch(function(){ callback(longUrl); });
       }
 
-      function renderCompactQRCode(targetText){
+      // 改用微信标准的 H 级纠错与高清晰度渲染，生成和微信完全一样的标准方块二维码
+      function renderStandardQRCode(targetText){
         $('qrcode').innerHTML = '';
         new QRCode($('qrcode'), {
           text: targetText,
           width: 200,
           height: 200,
-          colorDark: '#111827',
+          colorDark: '#000000',
           colorLight: '#ffffff',
-          correctLevel: QRCode.CorrectLevel.L
+          correctLevel: QRCode.CorrectLevel.H
         });
       }
 
       $('qrBtn').addEventListener('click', function(){
-        var longUrl = getLongUrl();
+        var baseUri = getBaseUrl();
         var cleanNo = currentData.n.replace(/\s+/g,'').toUpperCase();
         $('qrModal').classList.add('open');
-        $('shortLinkDisplay').value = '正在生成固定查询短链...';
-        $('qrTipText').textContent = '当前单号：' + cleanNo + '（扫码直接看最新修改内容）';
+        $('shortLinkDisplay').value = '正在生成标准微信二维码...';
+        $('qrTipText').textContent = '当前单号：' + cleanNo + '（微信扫码秒开）';
         $('qrcode').innerHTML = '<div style="font-size:12px;color:#888;">正在生成二维码...</div>';
 
-        fetchShortUrl(longUrl, function(finalUrl){
+        fetchShortUrl(baseUri, function(finalUrl){
           $('shortLinkDisplay').value = finalUrl;
-          renderCompactQRCode(finalUrl);
+          renderStandardQRCode(finalUrl);
         });
       });
 
@@ -580,17 +580,17 @@
         var cleanNo = currentData.n.replace(/\s+/g,'').toUpperCase();
         var downloadLink = document.createElement('a');
         downloadLink.href = imageUrl;
-        downloadLink.download = cleanNo + '.png';
+        downloadLink.download = cleanNo + '_wx.png';
         document.body.appendChild(downloadLink);
         downloadLink.click();
         document.body.removeChild(downloadLink);
-        toast('二维码下载成功！');
+        toast('微信标准二维码下载成功！');
       });
 
       $('shareBtn').addEventListener('click', function(){
-        var longUrl = getLongUrl();
+        var baseUri = getBaseUrl();
         toast('正在生成短链接...');
-        fetchShortUrl(longUrl, function(shortUrl){
+        fetchShortUrl(baseUri, function(shortUrl){
           if(navigator.clipboard && navigator.clipboard.writeText){
             navigator.clipboard.writeText(shortUrl).then(function(){
               toast('查询链接已复制！');
