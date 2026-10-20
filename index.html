@@ -211,7 +211,7 @@
             <label>运输进度<div class="range-row"><input id="progressInput" type="range" min="0" max="100" value="58" /><output id="progressOutput">58%</output></div></label>
             
             <div class="editor-actions">
-              <button class="primary" id="applyBtn">保存并生成专属二维码</button>
+              <button class="primary" id="applyBtn">保存运单数据</button>
               <button class="secondary" id="resetBtn">新建空白单</button>
               <button class="secondary full-btn" id="addBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 5v14M5 12h14"/></svg>新增物流动态节点</button>
               <button class="secondary full-btn qr-btn" id="qrBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>微信扫码查件 / 保存二维码</button>
@@ -513,12 +513,9 @@
         });
       }
 
-      // 核心修复：点击保存时，自动将最新修改的数据整体打包加密到网址中，并自动刷新网页让全网立刻同步！
       $('applyBtn').addEventListener('click', function(){
         applyForm();
-        var cleanNo = currentData.n.replace(/\s+/g,'').toUpperCase();
-        var jsonStr = encodeURIComponent(JSON.stringify(currentData));
-        window.location.href = window.location.origin + window.location.pathname + '#no=' + cleanNo + '&data=' + jsonStr;
+        toast('数据已成功保存！');
       });
 
       $('progressInput').addEventListener('input', function(){
@@ -526,15 +523,14 @@
         $('progressBar').style.width = this.value + '%';
       });
 
-      function getLongUrl(){
+      function getBaseUrl(){
         applyForm();
         var cleanNo = currentData.n.replace(/\s+/g,'').toUpperCase();
-        var jsonStr = encodeURIComponent(JSON.stringify(currentData));
-        return window.location.origin + window.location.pathname + '#no=' + cleanNo + '&data=' + jsonStr;
+        // 二维码只对应纯净的单号路由，生成绝不报错的标准微信清爽码
+        return window.location.origin + window.location.pathname + '#no=' + cleanNo;
       }
 
-      // 彻底抛弃第三方短链，改用专门的极简压缩生成标准微信二维码，保证扫出来的100%是最新修改的数据！
-      function renderStandardQRCode(targetText){
+      function renderCleanQRCode(targetText){
         $('qrcode').innerHTML = '';
         new QRCode($('qrcode'), {
           text: targetText,
@@ -547,12 +543,12 @@
       }
 
       $('qrBtn').addEventListener('click', function(){
-        var longUrl = getLongUrl();
+        var baseUri = getBaseUrl();
         var cleanNo = currentData.n.replace(/\s+/g,'').toUpperCase();
         $('qrModal').classList.add('open');
-        $('shortLinkDisplay').value = longUrl;
-        $('qrTipText').textContent = '当前单号：' + cleanNo + '（微信扫码100%显示最新修改内容）';
-        renderStandardQRCode(longUrl);
+        $('shortLinkDisplay').value = baseUri;
+        $('qrTipText').textContent = '当前单号：' + cleanNo + '（微信扫码秒开，清爽好识别）';
+        renderCleanQRCode(baseUri);
       });
 
       $('closeQrModal').addEventListener('click', function(){ $('qrModal').classList.remove('open'); });
@@ -581,13 +577,13 @@
       });
 
       $('shareBtn').addEventListener('click', function(){
-        var longUrl = getLongUrl();
+        var baseUri = getBaseUrl();
         if(navigator.clipboard && navigator.clipboard.writeText){
-          navigator.clipboard.writeText(longUrl).then(function(){
+          navigator.clipboard.writeText(baseUri).then(function(){
             toast('查询链接已复制！');
-          }).catch(function(){ prompt('请复制以下链接：', longUrl); });
+          }).catch(function(){ prompt('请复制以下链接：', baseUri); });
         } else {
-          prompt('请复制以下链接：', longUrl);
+          prompt('请复制以下链接：', baseUri);
         }
       });
 
@@ -692,18 +688,6 @@
       function initFromUrl(){
         var hash = window.location.hash;
         if(hash){
-          var matchData = hash.match(/data=([^&]+)/);
-          if(matchData && matchData[1]){
-            try {
-              var decoded = JSON.parse(decodeURIComponent(matchData[1]));
-              if(decoded && decoded.n){
-                currentData = decoded;
-                render();
-                updateAdminUI();
-                return;
-              }
-            } catch(e){}
-          }
           var matchNo = hash.match(/no=([^&]+)/);
           if(matchNo && matchNo[1]){
             loadPackageFromStorage(matchNo[1], function(data){
