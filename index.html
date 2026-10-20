@@ -45,7 +45,13 @@
     .primary:disabled{opacity:.6;cursor:not-allowed}
     .shipment{padding:26px}
     .shipment-head{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}
-    .status-badge{display:inline-flex;align-items:center;gap:8px;background:var(--success-soft);color:var(--success);border-radius:999px;padding:7px 11px;font-size:13px;font-weight:700}
+    .status-badge{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:7px 12px;font-size:13px;font-weight:700;transition:.2s}
+    .status-badge.status-已送达{background:var(--success-soft);color:var(--success)}
+    .status-badge.status-运输中{background:var(--accent-soft);color:var(--accent-deep)}
+    .status-badge.status-派送中{background:#f0fdf4;color:#16a34a}
+    .status-badge.status-已揽收{background:var(--surface-2);color:var(--muted)}
+    .status-badge.status-异常延误{background:var(--warning-soft);color:var(--warning)}
+    .progress-labels span.active{color:var(--accent);font-weight:700}
     .status-badge i{width:8px;height:8px;background:currentColor;border-radius:50%;box-shadow:0 0 0 4px color-mix(in srgb,currentColor 15%,transparent)}
     .shipment h2{margin:12px 0 5px;font-size:clamp(23px,3.3vw,34px);letter-spacing:-.03em}
     .route{margin:0;color:var(--muted);font-weight:500}
@@ -729,13 +735,35 @@
       });
 
       function render(){
+        // 智能防呆纠偏：若标题为已送达但状态是运输中，自动统一为已送达
+        if(/已送达|签收|已签收/.test(currentData.h) && currentData.s !== '已送达'){
+          currentData.s = '已送达';
+          currentData.p = 100;
+          if(!currentData.t || currentData.t.indexOf('月') > -1) currentData.t = '已签收';
+        }
+        if(currentData.s === '已送达' && Number(currentData.p) < 100){
+          currentData.p = 100;
+        }
+
+        var badge = $('statusText').parentElement;
+        badge.className = 'status-badge status-' + currentData.s;
         $('statusText').textContent = currentData.s;
         $('headline').textContent = currentData.h;
         $('originText').textContent = currentData.o;
         $('destinationText').textContent = currentData.d;
-        $('etaText').textContent = currentData.t;
+        $('etaText').textContent = currentData.t || (currentData.s === '已送达' ? '已签收' : '运输中');
         $('progressBar').style.width = currentData.p + '%';
         $('progressOutput').textContent = currentData.p + '%';
+
+        // 进度节点高亮
+        var pLabels = document.querySelectorAll('.progress-labels span');
+        if(pLabels.length === 4){
+          var pVal = Number(currentData.p);
+          pLabels[0].className = pVal >= 20 ? 'active' : '';
+          pLabels[1].className = pVal >= 50 ? 'active' : '';
+          pLabels[2].className = pVal >= 80 ? 'active' : '';
+          pLabels[3].className = pVal >= 100 ? 'active' : '';
+        }
 
         $('recipientNameText').textContent = currentData.rn || '未设置收件人';
         $('recipientPhoneText').textContent = maskPhone(currentData.rp);
@@ -782,16 +810,56 @@
         }
       }
 
+      var statusPresets = {
+        '已揽收': { h: '包裹已揽收', p: 20, t: '预计 3 天内送达' },
+        '运输中': { h: '正在前往下一站', p: 55, t: '预计 1~2 天送达' },
+        '派送中': { h: '快递员正在派送中', p: 85, t: '预计今天送达' },
+        '已送达': { h: '包裹已签收，感谢使用', p: 100, t: '已签收' },
+        '异常延误': { h: '包裹运输异常，正在加急处理', p: 50, t: '延误处理中' }
+      };
+
+      // 管理后台下拉联动：选择状态自动同步标题、进度条和预计时间
+      $('statusInput').addEventListener('change', function(){
+        var preset = statusPresets[this.value];
+        if(preset){
+          $('headlineInput').value = preset.h;
+          $('progressInput').value = preset.p;
+          $('progressOutput').textContent = preset.p + '%';
+          $('progressBar').style.width = preset.p + '%';
+          $('etaInput').value = preset.t;
+        }
+      });
+
       function applyForm(){
-        currentData.s = $('statusInput').value;
-        currentData.h = $('headlineInput').value.trim() || '—';
+        var sVal = $('statusInput').value;
+        var hVal = $('headlineInput').value.trim() || '—';
+        var pVal = Number($('progressInput').value);
+        var tVal = $('etaInput').value.trim() || '—';
+
+        // 智能防呆纠偏：如果大标题写了已送达，状态和进度条自动对齐为已送达和100%
+        if(/已送达|签收|已签收/.test(hVal)){
+          sVal = '已送达';
+          pVal = 100;
+          if(!tVal || tVal.indexOf('月') > -1) tVal = '已签收';
+          $('statusInput').value = '已送达';
+          $('progressInput').value = 100;
+          $('progressOutput').textContent = '100%';
+          $('etaInput').value = tVal;
+        } else if(sVal === '已送达' && pVal < 100){
+          pVal = 100;
+          $('progressInput').value = 100;
+          $('progressOutput').textContent = '100%';
+        }
+
+        currentData.s = sVal;
+        currentData.h = hVal;
         currentData.o = $('originInput').value.trim() || '—';
         currentData.d = $('destinationInput').value.trim() || '—';
         currentData.rn = $('recipientNameInput').value.trim() || '张先生';
         currentData.rp = $('recipientPhoneInput').value.trim() || '—';
         currentData.ra = $('recipientAddressInput').value.trim() || '北京市朝阳区建国路88号';
-        currentData.t = $('etaInput').value.trim() || '—';
-        currentData.p = $('progressInput').value;
+        currentData.t = tVal;
+        currentData.p = pVal;
         currentData.n = $('adminTrackingInput').value.trim().toUpperCase() || 'KD' + Math.floor(100000000 + Math.random() * 900000000);
       }
 
@@ -1021,7 +1089,7 @@
         currentData.n = 'KD' + randNum;
         currentData.h = '运单已创建，等待揽收';
         currentData.s = '已揽收';
-        currentData.p = '10';
+        currentData.p = 20;
         currentData.rn = '李先生';
         currentData.rp = '13912348899';
         currentData.ra = '广东省深圳市南山区高新科技园南区T3栋';
