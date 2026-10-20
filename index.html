@@ -51,7 +51,6 @@
     .status-badge.status-派送中{background:#f0fdf4;color:#16a34a}
     .status-badge.status-已揽收{background:var(--surface-2);color:var(--muted)}
     .status-badge.status-异常延误{background:var(--warning-soft);color:var(--warning)}
-    .status-badge.status-已失效{background:var(--danger-soft);color:var(--danger)}
     .progress-labels span.active{color:var(--accent);font-weight:700}
     .status-badge i{width:8px;height:8px;background:currentColor;border-radius:50%;box-shadow:0 0 0 4px color-mix(in srgb,currentColor 15%,transparent)}
     .shipment h2{margin:12px 0 5px;font-size:clamp(23px,3.3vw,34px);letter-spacing:-.03em}
@@ -132,6 +131,15 @@
     .badge-live{background:var(--success-soft);color:var(--success);padding:2px 6px;border-radius:4px;font-weight:700;font-size:11px}
     .provider-section{display:none;margin-top:10px;gap:12px}
     .provider-section.active{display:grid}
+
+    /* 运单列表管理组件样式 */
+    @media (max-width: 860px){
+      .topline{flex-direction:column;align-items:flex-start;gap:12px}
+      .layout, body.is-admin .layout{grid-template-columns:1fr}
+      .shipment-head{flex-direction:column;align-items:stretch}
+      .eta{text-align:left;min-width:auto}
+      .two{grid-template-columns:1fr}
+    }
     .orders-panel{border-radius:var(--radius);overflow:hidden;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);display:flex;flex-direction:column}
     .orders-head{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;background:var(--surface-2)}
     .orders-head h3{margin:0;font-size:15px;display:flex;align-items:center;gap:6px}
@@ -150,13 +158,15 @@
     .order-btn-sm.btn-del{color:var(--danger);border-color:var(--danger-soft)}
     .order-btn-sm.btn-del:hover{background:var(--danger);color:#fff}
     .empty-orders{padding:26px 16px;text-align:center;color:var(--muted);font-size:12px}
+    .status-badge.status-已失效{background:var(--danger-soft);color:var(--danger)}
+
   </style>
 </head>
 <body>
   <main class="page">
     <header class="topline">
       <div>
-        <p class="eyebrow">Logistics tracking</p>
+        <p class="eyebrow">中美跨国物流实时追踪</p>
         <h1 id="pageTitle" title="点击3次打开管理后台">包裹实时追踪</h1>
       </div>
     </header>
@@ -175,10 +185,10 @@
           <div class="shipment-head">
             <div>
               <div class="status-badge"><i></i><span id="statusText">运输中</span></div>
-              <h2 id="headline">国际干线运输中 · 航班已起飞</h2>
+              <h2 id="headline">正在前往下一站</h2>
               <p class="route"><span id="originText">美国洛杉矶 (LAX, USA)</span> → <span id="destinationText">中国广东省广州市</span></p>
             </div>
-            <div class="eta"><small>预计送达</small><strong id="etaText">10 月 18 日</strong></div>
+            <div class="eta"><small>预计送达</small><strong id="etaText">10 月 16 日</strong></div>
           </div>
           <div class="progress-wrap">
             <div class="progress-line"><span id="progressBar"></span></div>
@@ -225,7 +235,7 @@
           </div>
           <div class="form">
             <label>
-              快递单号
+              美国到中国快递单号 (USPS / EMS 标准)
               <div class="inline-field">
                 <input class="field" id="adminTrackingInput" value="EA824731095US" placeholder="例如 EA123456789US" />
                 <button type="button" class="gen-btn" id="generateNoBtn">生成中美单号</button>
@@ -248,8 +258,8 @@
               <label>联系电话(输入完整手机号)<input class="field" id="recipientPhoneInput" value="13812345678" placeholder="例如：13812345678" /></label>
             </div>
             <label>收件详细地址<input class="field" id="recipientAddressInput" value="中国广东省广州市天河区珠江新城冼村路16号保利中心2201室" placeholder="详细收件地址" /></label>
-            <label>预计送达<input class="field" id="etaInput" value="10 月 18 日" /></label>
-            <label>运输进度<div class="range-row"><input id="progressInput" type="range" min="0" max="100" value="65" /><output id="progressOutput">65%</output></div></label>
+            <label>预计送达<input class="field" id="etaInput" value="10 月 16 日" /></label>
+            <label>运输进度<div class="range-row"><input id="progressInput" type="range" min="0" max="100" value="58" /><output id="progressOutput">58%</output></div></label>
             
             <div class="editor-actions">
               <button class="primary" id="applyBtn">保存并生成专属二维码</button>
@@ -403,6 +413,7 @@
     </div>
   </div>
 
+  
   <div class="modal" id="deleteConfirmModal" role="dialog" aria-modal="true">
     <div class="modal-panel" style="max-width:380px">
       <div class="modal-head">
@@ -446,7 +457,7 @@
       };
 
       var currentData = JSON.parse(JSON.stringify(defaultData));
-      var isUnlocked = false;
+      var isUnlocked = localStorage.getItem('kd_admin_unlocked') === 'true';
       var editIndex = -1;
 
       var STORAGE_KEY_DB = 'kd_express_orders_store';
@@ -481,6 +492,7 @@
         try {
           var cfg = localStorage.getItem(STORAGE_KEY_CLOUD);
           if(!cfg){
+            // 自动推测 GitHub owner 与 repo
             var autoOwner = '';
             var autoRepo = '';
             if(window.location.hostname.indexOf('github.io') > -1){
@@ -580,6 +592,7 @@
         var branch = (cfg && cfg.ghBranch) ? cfg.ghBranch.trim() : 'main';
         var token = (cfg && cfg.ghToken) ? cfg.ghToken.trim() : '';
 
+        // 自动解析当前 GitHub Pages 的用户名与仓库名
         if(!owner && window.location.hostname.indexOf('github.io') > -1){
           owner = window.location.hostname.split('.')[0];
         }
@@ -797,6 +810,7 @@
           var jsonStr = JSON.stringify(data, null, 2);
           var b64Content = btoa(unescape(encodeURIComponent(jsonStr)));
 
+          // 彻底解决浏览器缓存导致 SHA 不匹配的 Bug (强制 no-store 与时间戳)
           function getFreshSha(cb){
             fetch(apiUrl + '?ref=' + encodeURIComponent(branch) + '&_nocache=' + Date.now(), {
               cache: 'no-store',
@@ -836,6 +850,7 @@
                 callback(true);
               } else {
                 res.json().then(function(err){
+                  // 如果报 409 冲突或者 does not match，尝试提取目标 SHA 自动重试一次
                   if(!isRetry && (res.status === 409 || (err.message && err.message.indexOf('does not match') > -1))){
                     var matchSha = err.message ? err.message.match(/does not match ([a-f0-9]{40})/i) : null;
                     if(matchSha && matchSha[1]){
@@ -935,16 +950,41 @@
 
       $('closeLoginModal').addEventListener('click', function(){ $('loginModal').classList.remove('open'); });
 
+      function openAdminLoginModal(){
+        $('loginModal').classList.add('open');
+        setTimeout(function(){ $('adminPwdInput').focus(); }, 100);
+      }
+
+      var clickCount = 0;
+      var clickTimer = null;
+      $('pageTitle').addEventListener('click', function(){
+        clickCount++;
+        clearTimeout(clickTimer);
+        clickTimer = setTimeout(function(){ clickCount = 0; }, 1200);
+        if(clickCount >= 3){
+          clickCount = 0;
+          openAdminLoginModal();
+        }
+      });
+
+      document.addEventListener('keydown', function(e){
+        if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'm'){
+          e.preventDefault();
+          openAdminLoginModal();
+        }
+      });
+
       $('loginSubmitBtn').addEventListener('click', function(){
         var val = $('adminPwdInput').value.trim();
         if(val === ADMIN_PASSWORD){
           isUnlocked = true;
+          localStorage.setItem('kd_admin_unlocked', 'true');
           $('adminPwdInput').value = '';
           $('loginModal').classList.remove('open');
           updateAdminUI();
-          toast('管理员已登录');
+          toast('✅ 管理员登录成功！后台已在右侧展开');
         } else {
-          toast('密码错误');
+          toast('密码错误，请核对后重新输入');
         }
       });
       $('adminPwdInput').addEventListener('keydown', function(e){
@@ -953,11 +993,13 @@
 
       $('logoutBtn').addEventListener('click', function(){
         isUnlocked = false;
+        localStorage.removeItem('kd_admin_unlocked');
         updateAdminUI();
         toast('已退出管理员模式');
       });
 
       function generateUsToCnTrackingNo(){
+        // 美国到中国标准万国邮联 UPU S10 / USPS 国际特快 EMS 格式：前缀2字母 + 9位数字 + US
         var prefixes = ['EA', 'EC', 'CW', 'CP'];
         var prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
         var rand9 = Math.floor(100000000 + Math.random() * 900000000);
@@ -971,6 +1013,7 @@
       });
 
       function render(){
+        // 智能防呆纠偏：若标题为已送达但状态是运输中，自动统一为已送达
         if(/已送达|签收|已签收/.test(currentData.h) && currentData.s !== '已送达' && currentData.s !== '已失效'){
           currentData.s = '已送达';
           currentData.p = 100;
@@ -990,6 +1033,7 @@
         $('progressBar').style.width = currentData.p + '%';
         $('progressOutput').textContent = currentData.p + '%';
 
+        // 进度节点高亮
         var pLabels = document.querySelectorAll('.progress-labels span');
         if(pLabels.length === 4){
           var pVal = Number(currentData.p);
@@ -1057,6 +1101,7 @@
         '已失效': { h: '该运单已删除或已失效', p: 0, t: '已作废' }
       };
 
+      // 管理后台下拉联动：选择状态自动同步标题、进度条和预计时间
       $('statusInput').addEventListener('change', function(){
         var preset = statusPresets[this.value];
         if(preset){
@@ -1068,6 +1113,7 @@
         }
       });
 
+      
       // ==================== 运单列表管理与删除逻辑 ====================
       var pendingDeleteNo = '';
 
@@ -1082,6 +1128,7 @@
           return;
         }
 
+        // 倒序排列，最近保存的在前面
         keys.reverse();
         container.innerHTML = keys.map(function(no){
           var item = db[no];
@@ -1102,6 +1149,7 @@
         }).join('');
       }
 
+      // 点击列表操作委托
       $('ordersListContainer').addEventListener('click', function(e){
         var loadBtn = e.target.closest('[data-load-no]');
         if(loadBtn){
@@ -1150,6 +1198,7 @@
       $('closeDeleteModal').addEventListener('click', closeDeleteModal);
       $('cancelDeleteBtn').addEventListener('click', closeDeleteModal);
 
+      // 彻底删除当前运单按钮
       $('deleteCurrentOrderBtn').addEventListener('click', function(){
         openDeleteModal(currentData.n);
       });
@@ -1169,6 +1218,7 @@
             deleteLocalOrder(noToDel);
             renderOrdersList();
 
+            // 若当前页面展示的正巧是此单，直接渲染为“已失效”页面
             if(currentData.n === noToDel){
               currentData.s = '已失效';
               currentData.h = '该运单已删除或已失效';
@@ -1196,6 +1246,7 @@
         var pVal = Number($('progressInput').value);
         var tVal = $('etaInput').value.trim() || '—';
 
+        // 智能防呆纠偏：如果大标题写了已送达，状态和进度条自动对齐为已送达和100%
         if(/已送达|签收|已签收/.test(hVal)){
           sVal = '已送达';
           pVal = 100;
@@ -1216,10 +1267,10 @@
         currentData.d = $('destinationInput').value.trim() || '—';
         currentData.rn = $('recipientNameInput').value.trim() || '张先生';
         currentData.rp = $('recipientPhoneInput').value.trim() || '—';
-        currentData.ra = $('recipientAddressInput').value.trim() || '中国广东省广州市天河区珠江新城冼村路16号';
+        currentData.ra = $('recipientAddressInput').value.trim() || '北京市朝阳区建国路88号';
         currentData.t = tVal;
         currentData.p = pVal;
-        currentData.n = $('adminTrackingInput').value.trim().toUpperCase() || generateUsToCnTrackingNo();
+        currentData.n = $('adminTrackingInput').value.trim().toUpperCase() || 'KD' + Math.floor(100000000 + Math.random() * 900000000);
       }
 
       $('progressInput').addEventListener('input', function(){
@@ -1652,12 +1703,14 @@
               renderOrdersList();
               updateAdminUI();
             } else if(isDeleted){
+              // 明确已从云端删除：清空本地可能残留的旧缓存并展示作废状态
               deleteLocalOrder(queryNo);
               renderInvalidState(queryNo);
               renderOrdersList();
               updateAdminUI();
               toast('⚠️ 该运单已被删除，二维码已失效！');
             } else {
+              // 离线或查无数据，检查本地数据库
               var db = getLocalOrdersDB();
               if(db && db[queryNo]){
                 currentData = db[queryNo];
