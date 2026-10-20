@@ -7,17 +7,19 @@
   <link rel="icon" href="data:," />
   <title>快递跟踪查询</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/leancloud-storage@4.15.2/dist/av-min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap');
     :root{
       color-scheme:light dark;
       --bg:#f3f5f7; --surface:#ffffff; --surface-2:#eef2f5; --ink:#14202b; --muted:#5b6873;
       --line:#d9e0e5; --accent:#0572ce; --accent-deep:#004f91; --accent-soft:#e5f3ff;
-      --success:#18794e; --success-soft:#e8f7ef; --warning:#b75a00; --shadow:0 18px 45px rgba(23,48,68,.10);
+      --success:#18794e; --success-soft:#e8f7ef; --warning:#b75a00; --warning-soft:#fff7ed;
+      --danger:#d93838; --danger-soft:#fdf2f2; --shadow:0 18px 45px rgba(23,48,68,.10);
       --radius:18px;
     }
     @media (prefers-color-scheme:dark){
-      :root{--bg:#0f151a;--surface:#182127;--surface-2:#202c33;--ink:#f1f5f7;--muted:#a6b3bc;--line:#314149;--accent:#56adf0;--accent-deep:#8bc9f6;--accent-soft:#17364b;--success:#63d49a;--success-soft:#19392a;--warning:#ffb56e;--shadow:0 18px 45px rgba(0,0,0,.28)}
+      :root{--bg:#0f151a;--surface:#182127;--surface-2:#202c33;--ink:#f1f5f7;--muted:#a6b3bc;--line:#314149;--accent:#56adf0;--accent-deep:#8bc9f6;--accent-soft:#17364b;--success:#63d49a;--success-soft:#19392a;--warning:#ffb56e;--warning-soft:#332211;--danger:#ff6b6b;--danger-soft:#3d1818;--shadow:0 18px 45px rgba(0,0,0,.28)}
     }
     *{box-sizing:border-box}
     html{min-width:0;background:var(--bg)}
@@ -29,7 +31,7 @@
     .eyebrow{margin:0 0 5px;color:var(--accent-deep);font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
     h1{font-size:clamp(26px,4vw,40px);line-height:1.1;margin:0;letter-spacing:-.035em;user-select:none;cursor:pointer}
     .layout{display:grid;grid-template-columns:minmax(0,1fr);gap:22px;align-items:start}
-    body.is-admin .layout{grid-template-columns:minmax(0,1fr) 350px}
+    body.is-admin .layout{grid-template-columns:minmax(0,1fr) 360px}
     .card{background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow)}
     .tracking-card{border-radius:var(--radius);overflow:hidden}
     .searchbar{display:flex;gap:10px;padding:18px;border-bottom:1px solid var(--line)}
@@ -40,6 +42,7 @@
     .primary,.secondary,.icon-btn{border:0;cursor:pointer;transition:background .18s,border-color .18s}
     .primary{background:var(--accent);color:#fff;border-radius:12px;padding:0 20px;font-weight:700}
     .primary:hover{background:var(--accent-deep)}
+    .primary:disabled{opacity:.6;cursor:not-allowed}
     .shipment{padding:26px}
     .shipment-head{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}
     .status-badge{display:inline-flex;align-items:center;gap:8px;background:var(--success-soft);color:var(--success);border-radius:999px;padding:7px 11px;font-size:13px;font-weight:700}
@@ -50,7 +53,7 @@
     .eta small{display:block;color:var(--muted);font-size:12px;margin-bottom:2px}.eta strong{display:block;font-size:18px}
     .progress-wrap{margin:30px 0 8px}
     .progress-line{height:6px;background:var(--surface-2);border-radius:10px;overflow:hidden}
-    .progress-line span{display:block;width:58%;height:100%;background:var(--accent);border-radius:inherit}
+    .progress-line span{display:block;width:58%;height:100%;background:var(--accent);border-radius:inherit;transition:width .3s ease}
     .progress-labels{display:flex;justify-content:space-between;color:var(--muted);font-size:11px;margin-top:8px}
     .recipient-box{margin-top:22px;padding:16px 18px;background:var(--surface-2);border-radius:14px;border:1px solid var(--line);display:flex;gap:14px;align-items:flex-start}
     .recipient-icon{width:36px;height:36px;border-radius:50%;background:var(--accent-soft);color:var(--accent-deep);display:grid;place-items:center;flex:0 0 auto}
@@ -79,36 +82,49 @@
     .side-panel{display:none;flex-direction:column;gap:16px}
     body.is-admin .side-panel{display:flex}
     .editor{border-radius:var(--radius);overflow:hidden;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow)}
-    .editor-head{padding:19px 20px 15px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+    .editor-head{padding:18px 20px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
     .editor-head h2{font-size:18px;margin:0}
     .logout-btn{background:none;border:0;color:var(--warning);font-size:12px;cursor:pointer;padding:4px 8px;border-radius:6px}
-    .form{padding:17px 20px 20px;display:grid;gap:13px}
-    label{display:grid;gap:6px;color:var(--muted);font-size:12px;font-weight:600}
+    .cloud-status-bar{margin:0 20px;margin-top:14px;padding:8px 12px;background:var(--surface-2);border-radius:10px;font-size:12px;display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line)}
+    .cloud-pill{display:inline-flex;align-items:center;gap:6px;font-weight:600}
+    .cloud-pill.connected{color:var(--success)}
+    .cloud-pill.offline{color:var(--muted)}
+    .cloud-btn-link{color:var(--accent);background:none;border:0;padding:0;cursor:pointer;font-weight:600;text-decoration:underline}
+    .form{padding:14px 20px 20px;display:grid;gap:12px}
+    label{display:grid;gap:5px;color:var(--muted);font-size:12px;font-weight:600}
     .field{width:100%;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);border-radius:10px;padding:10px 11px;outline:0}
     .field:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
     .inline-field{display:flex;gap:8px}
     .gen-btn{flex-shrink:0;padding:0 12px;font-size:12px;border-radius:10px;background:var(--surface-2);border:1px solid var(--line);cursor:pointer}
     .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     .range-row{display:flex;align-items:center;gap:10px}.range-row input{accent-color:var(--accent);width:100%}.range-row output{min-width:36px;color:var(--ink);font-weight:700;font-size:12px}
-    .editor-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:3px}
+    .editor-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:6px}
     .editor-actions .primary{padding:11px 12px}
     .secondary{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-weight:700}
     .secondary:hover{background:var(--surface-2)}
     .full-btn{grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:7px}
     .share-btn{background:#e9f6ed;color:#18794e;border:1px solid #c2e5cc}
     .qr-btn{background:#eef6ff;color:#0572ce;border:1px solid #bfdcff}
+    .cloud-setting-btn{background:var(--surface-2);color:var(--ink);border:1px solid var(--line)}
     .danger-btn{background:#fdf2f2;color:#d93838;border:1px solid #f7c6c6}
     .event-tools{display:none;gap:6px;margin-top:8px}
     body.is-admin .event-tools{display:flex}
     .event-tools button{border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:7px;padding:4px 7px;font-size:11px;cursor:pointer}
-    .toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);background:var(--ink);color:var(--surface);padding:10px 18px;border-radius:10px;opacity:0;pointer-events:none;transition:.2s;z-index:30;font-size:13px;box-shadow:var(--shadow);text-align:center}.toast.show{opacity:1;transform:translate(-50%,0)}
-    .modal{position:fixed;inset:0;background:rgba(5,13,20,.58);display:none;place-items:center;padding:20px;z-index:20}.modal.open{display:grid}.modal-panel{width:min(460px,100%);background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:21px}.modal-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:17px}.modal-head h2{margin:0;font-size:19px}.icon-btn{width:34px;height:34px;display:grid;place-items:center;background:var(--surface-2);border-radius:50%;font-size:22px}.modal .form{padding:0}.modal .primary{padding:11px 14px}
+    .toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);background:var(--ink);color:var(--surface);padding:10px 18px;border-radius:10px;opacity:0;pointer-events:none;transition:.2s;z-index:30;font-size:13px;box-shadow:var(--shadow);text-align:center;max-width:90%}.toast.show{opacity:1;transform:translate(-50%,0)}
+    .modal{position:fixed;inset:0;background:rgba(5,13,20,.58);display:none;place-items:center;padding:20px;z-index:20;overflow-y:auto}.modal.open{display:grid}
+    .modal-panel{width:min(500px,100%);background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:22px;max-height:90vh;overflow-y:auto}
+    .modal-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:17px}.modal-head h2{margin:0;font-size:18px}.icon-btn{width:34px;height:34px;display:grid;place-items:center;background:var(--surface-2);border-radius:50%;font-size:22px}.modal .form{padding:0}.modal .primary{padding:11px 14px}
     .qr-box{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px 0}
     #qrcode{padding:16px;background:#fff;border-radius:14px;box-shadow:0 4px 20px rgba(0,0,0,.08);margin-bottom:14px;min-height:232px;min-width:232px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line)}
     #qrcode img,#qrcode canvas{display:block;margin:0 auto}
-    .qr-tip{font-size:13px;color:var(--muted);text-align:center;margin:0 0 14px}
+    .qr-tip{font-size:13px;color:var(--muted);text-align:center;margin:0 0 14px;line-height:1.5}
     .short-link-input{width:100%;font-size:13px;padding:9px 12px;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;color:var(--ink);text-align:center;margin-bottom:10px}
     .qr-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;margin-top:10px}
+    .helper-text{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.4}
+    .tip-box{background:var(--surface-2);border-left:3px solid var(--accent);padding:10px 12px;border-radius:6px;font-size:12px;color:var(--muted);margin:10px 0;line-height:1.5}
+    .badge-live{background:var(--success-soft);color:var(--success);padding:2px 6px;border-radius:4px;font-weight:700;font-size:11px}
+    .provider-section{display:none;margin-top:10px;gap:12px}
+    .provider-section.active{display:grid}
   </style>
 </head>
 <body>
@@ -178,6 +194,10 @@
             <h2>运单修改管理</h2>
             <button class="logout-btn" id="logoutBtn">退出登录</button>
           </div>
+          <div class="cloud-status-bar">
+            <span class="cloud-pill offline" id="cloudStatusIndicator"><i>●</i> <span>离线模式 (未连云端)</span></span>
+            <button type="button" class="cloud-btn-link" id="openCloudSettingLink">云端配置</button>
+          </div>
           <div class="form">
             <label>
               快递单号
@@ -211,6 +231,7 @@
               <button class="secondary full-btn" id="addBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 5v14M5 12h14"/></svg>新增物流动态节点</button>
               <button class="secondary full-btn qr-btn" id="qrBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>微信扫码查件 / 保存二维码</button>
               <button class="secondary full-btn share-btn" id="shareBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>一键复制查询链接</button>
+              <button class="secondary full-btn cloud-setting-btn" id="cloudSettingBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>☁️ 免费云端实时同步设置</button>
             </div>
           </div>
         </aside>
@@ -239,7 +260,7 @@
       </div>
       <div class="qr-box">
         <div id="qrcode"></div>
-        <p class="qr-tip" id="qrTipText">此二维码包含最新运单数据，微信扫码秒开</p>
+        <p class="qr-tip" id="qrTipText">此二维码包含运单数据，微信扫码秒开</p>
         <input type="text" id="shortLinkDisplay" class="short-link-input" readonly value="正在生成..." />
         <div class="qr-actions">
           <button class="secondary" id="copyShortLinkBtn">复制链接</button>
@@ -260,6 +281,90 @@
       </div>
     </div>
   </div>
+
+  <!-- 云端同步设置弹窗 -->
+  <div class="modal" id="cloudModal" role="dialog" aria-modal="true">
+    <div class="modal-panel">
+      <div class="modal-head">
+        <h2>☁️ 云端数据库实时同步设置</h2>
+        <button class="icon-btn" id="closeCloudModal">×</button>
+      </div>
+      <div class="form">
+        <div class="tip-box">
+          <strong>解决用户刷新看不到更新的根本方法：</strong><br />
+          配置云端存储后，<b>二维码永远固定不变</b>（只带单号），管理员修改后自动同步到云端，用户微信扫码或刷新 100% 呈现最新动态！
+        </div>
+        <label>
+          选择同步存储服务
+          <select class="field" id="cloudProviderSelect">
+            <option value="github">方式一：GitHub 仓库直连（强烈推荐！无需注册任何新平台）</option>
+            <option value="leancloud">方式二：LeanCloud（已有账号用户可用）</option>
+            <option value="custom">方式三：自定义 REST API</option>
+            <option value="none">关闭（纯离线模式，每次修改需重新发新二维码）</option>
+          </select>
+        </label>
+
+        <!-- GitHub 配置面板 -->
+        <div class="provider-section active" id="secGithub">
+          <div class="tip-box" style="margin:0;border-color:var(--success)">
+            <b>免注册新账号：</b>因为你已在 GitHub 部署，可直接将运单存入 GitHub 仓库中！只需在 GitHub 创建一个 Personal Access Token (PAT)。
+          </div>
+          <div class="two">
+            <label>
+              GitHub 用户名
+              <input class="field" id="ghOwnerInput" placeholder="例如：your-name" />
+            </label>
+            <label>
+              仓库名称
+              <input class="field" id="ghRepoInput" placeholder="例如：express-track" />
+            </label>
+          </div>
+          <label>
+            GitHub Token (Personal Access Token)
+            <input class="field" type="password" id="ghTokenInput" placeholder="ghp_xxxx..." />
+            <span class="helper-text">
+              获取方式：GitHub右上角头像 -> Settings -> Developer Settings -> Personal access tokens (Tokens classic) -> Generate new token，勾选 <b>repo</b> 权限生成后复制到此处。
+            </span>
+          </label>
+          <label>
+            存储分支 (默认 main)
+            <input class="field" id="ghBranchInput" value="main" />
+          </label>
+        </div>
+
+        <!-- LeanCloud 配置面板 -->
+        <div class="provider-section" id="secLeancloud">
+          <label>
+            LeanCloud AppID
+            <input class="field" id="cloudAppIdInput" placeholder="例如：9gWkQ..." />
+          </label>
+          <label>
+            LeanCloud AppKey
+            <input class="field" id="cloudAppKeyInput" placeholder="例如：xLp8..." />
+          </label>
+          <label>
+            REST API 服务器地址 (ServerURL)
+            <input class="field" id="cloudServerUrlInput" placeholder="例如：https://xxxx.lc-cn-n1-shared.com" />
+          </label>
+        </div>
+
+        <!-- 自定义 API 面板 -->
+        <div class="provider-section" id="secCustom">
+          <label>
+            自定义 API 地址
+            <input class="field" id="customApiInput" placeholder="例如：https://your-api.com/api/tracking" />
+            <span class="helper-text">支持 GET ?no=xxx 查询，POST body: JSON 保存</span>
+          </label>
+        </div>
+
+        <div class="two" style="margin-top:8px">
+          <button type="button" class="secondary" id="testCloudBtn">测试云端连接</button>
+          <button type="button" class="primary" id="saveCloudBtn">保存配置</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
   <script>
@@ -289,6 +394,9 @@
       var isUnlocked = false;
       var editIndex = -1;
 
+      var STORAGE_KEY_DB = 'kd_express_orders_store';
+      var STORAGE_KEY_CLOUD = 'kd_express_cloud_cfg';
+
       var $ = function(id){ return document.getElementById(id); };
       function esc(s){ var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
 
@@ -306,12 +414,259 @@
       }
 
       function toast(msg){
-        $('toast').textContent = msg;
-        $('toast').classList.add('show');
-        clearTimeout(toast.t);
-        toast.t = setTimeout(function(){ $('toast').classList.remove('show'); }, 2500);
+        var t = $('toast');
+        t.textContent = msg;
+        t.classList.add('show');
+        clearTimeout(toast.timer);
+        toast.timer = setTimeout(function(){ t.classList.remove('show'); }, 3000);
       }
 
+      // ==================== 云端配置管理 ====================
+      function getCloudConfig(){
+        try {
+          var cfg = localStorage.getItem(STORAGE_KEY_CLOUD);
+          if(!cfg){
+            var autoOwner = '';
+            var autoRepo = '';
+            if(window.location.hostname.indexOf('github.io') > -1){
+              autoOwner = window.location.hostname.split('.')[0];
+              var pathParts = window.location.pathname.split('/').filter(Boolean);
+              if(pathParts.length > 0) autoRepo = pathParts[0];
+            }
+            return {
+              provider: 'github',
+              ghOwner: autoOwner,
+              ghRepo: autoRepo,
+              ghToken: '',
+              ghBranch: 'main',
+              appId: '', appKey: '', serverUrl: '',
+              customApi: ''
+            };
+          }
+          return JSON.parse(cfg);
+        } catch(e) {
+          return { provider: 'github', ghOwner:'', ghRepo:'', ghToken:'', ghBranch:'main' };
+        }
+      }
+
+      function saveCloudConfig(cfg){
+        try {
+          localStorage.setItem(STORAGE_KEY_CLOUD, JSON.stringify(cfg));
+        } catch(e){}
+      }
+
+      function isCloudActive(){
+        var cfg = getCloudConfig();
+        if(!cfg) return false;
+        if(cfg.provider === 'github') return !!(cfg.ghOwner && cfg.ghRepo && cfg.ghToken);
+        if(cfg.provider === 'leancloud') return !!(cfg.appId && cfg.appKey && cfg.serverUrl);
+        if(cfg.provider === 'custom') return !!cfg.customApi;
+        return false;
+      }
+
+      function initAVClient(){
+        var cfg = getCloudConfig();
+        if(cfg && cfg.provider === 'leancloud' && cfg.appId && cfg.appKey && cfg.serverUrl && window.AV){
+          try {
+            window.AV.init({
+              appId: cfg.appId.trim(),
+              appKey: cfg.appKey.trim(),
+              serverURL: cfg.serverUrl.trim()
+            });
+            return true;
+          } catch(err){
+            return false;
+          }
+        }
+        return false;
+      }
+
+      function updateCloudUIStatus(){
+        var indicator = $('cloudStatusIndicator');
+        var cfg = getCloudConfig();
+        if(isCloudActive()){
+          var name = cfg.provider === 'github' ? 'GitHub 仓库直连' : (cfg.provider === 'leancloud' ? 'LeanCloud' : '自定义云端');
+          indicator.className = 'cloud-pill connected';
+          indicator.innerHTML = '<i>●</i> <span>' + name + ' (永久动态码)</span>';
+        } else {
+          indicator.className = 'cloud-pill offline';
+          indicator.innerHTML = '<i>●</i> <span>离线模式 (静态离线码)</span>';
+        }
+      }
+
+      function saveLocalOrder(data){
+        try {
+          var db = getLocalOrdersDB();
+          db[data.n] = JSON.parse(JSON.stringify(data));
+          localStorage.setItem(STORAGE_KEY_DB, JSON.stringify(db));
+        } catch(e){}
+      }
+
+      function getLocalOrdersDB(){
+        try {
+          var str = localStorage.getItem(STORAGE_KEY_DB);
+          return str ? JSON.parse(str) : {};
+        } catch(e){
+          return {};
+        }
+      }
+
+      // ==================== 统一云端读写接口 ====================
+      function queryCloudOrder(trackingNo, callback){
+        var cfg = getCloudConfig();
+        if(!cfg || !isCloudActive()){
+          callback(null);
+          return;
+        }
+
+        // 1. GitHub 仓库直连查询
+        if(cfg.provider === 'github'){
+          var owner = cfg.ghOwner.trim();
+          var repo = cfg.ghRepo.trim();
+          var branch = (cfg.ghBranch || 'main').trim();
+          var url = 'https://api.github.com/repos/' + owner + '/' + repo + '/contents/data/' + trackingNo + '.json?ref=' + branch + '&t=' + Date.now();
+          
+          fetch(url, {
+            headers: cfg.ghToken ? { 'Authorization': 'token ' + cfg.ghToken.trim(), 'Accept': 'application/vnd.github.v3+json' } : { 'Accept': 'application/vnd.github.v3+json' }
+          }).then(function(res){
+            if(!res.ok) throw new Error('Not found');
+            return res.json();
+          }).then(function(json){
+            if(json && json.content){
+              var raw = decodeURIComponent(escape(atob(json.content.replace(/\s/g, ''))));
+              callback(JSON.parse(raw));
+            } else {
+              callback(null);
+            }
+          }).catch(function(){
+            var cdnUrl = 'https://cdn.jsdelivr.net/gh/' + owner + '/' + repo + '@' + branch + '/data/' + trackingNo + '.json?t=' + Date.now();
+            fetch(cdnUrl).then(function(res){
+              if(res.ok) return res.json();
+              throw new Error('CDN error');
+            }).then(function(json){
+              callback(json);
+            }).catch(function(){
+              callback(null);
+            });
+          });
+          return;
+        }
+
+        // 2. LeanCloud 查询
+        if(cfg.provider === 'leancloud' && window.AV){
+          try {
+            var query = new window.AV.Query('ExpressOrder');
+            query.equalTo('trackingNo', trackingNo);
+            query.first().then(function(order){
+              callback(order && order.get('data') ? order.get('data') : null);
+            }).catch(function(){ callback(null); });
+          } catch(e){ callback(null); }
+          return;
+        }
+
+        // 3. 自定义 API 查询
+        if(cfg.provider === 'custom' && cfg.customApi){
+          var customUrl = cfg.customApi.trim() + (cfg.customApi.indexOf('?') > -1 ? '&' : '?') + 'no=' + encodeURIComponent(trackingNo);
+          fetch(customUrl).then(function(res){ return res.json(); }).then(function(data){
+            callback(data);
+          }).catch(function(){ callback(null); });
+          return;
+        }
+
+        callback(null);
+      }
+
+      function saveCloudOrder(data, callback){
+        var cfg = getCloudConfig();
+        if(!cfg || !isCloudActive()){
+          callback(false, '未开启云端同步');
+          return;
+        }
+
+        // 1. GitHub 仓库直连写入
+        if(cfg.provider === 'github'){
+          var owner = cfg.ghOwner.trim();
+          var repo = cfg.ghRepo.trim();
+          var token = cfg.ghToken.trim();
+          var branch = (cfg.ghBranch || 'main').trim();
+          var path = 'data/' + data.n + '.json';
+          var apiUrl = 'https://api.github.com/repos/' + owner + '/' + repo + '/contents/' + path;
+          var jsonStr = JSON.stringify(data, null, 2);
+          var b64Content = btoa(unescape(encodeURIComponent(jsonStr)));
+
+          fetch(apiUrl + '?ref=' + branch, {
+            headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json' }
+          }).then(function(res){
+            if(res.ok) return res.json().then(function(f){ return f.sha; });
+            return null;
+          }).then(function(sha){
+            var bodyObj = {
+              message: 'Update tracking: ' + data.n,
+              content: b64Content,
+              branch: branch
+            };
+            if(sha) bodyObj.sha = sha;
+
+            return fetch(apiUrl, {
+              method: 'PUT',
+              headers: {
+                'Authorization': 'token ' + token,
+                'Content-Type': 'application/json',
+                'Accept': 'application/vnd.github.v3+json'
+              },
+              body: JSON.stringify(bodyObj)
+            });
+          }).then(function(res){
+            if(res.ok){
+              callback(true);
+            } else {
+              res.json().then(function(err){ callback(false, err.message || 'GitHub 写入失败'); });
+            }
+          }).catch(function(err){
+            callback(false, err.message);
+          });
+          return;
+        }
+
+        // 2. LeanCloud 写入
+        if(cfg.provider === 'leancloud' && window.AV){
+          try {
+            var q = new window.AV.Query('ExpressOrder');
+            q.equalTo('trackingNo', data.n);
+            q.first().then(function(order){
+              if(!order){
+                var ExpressOrder = window.AV.Object.extend('ExpressOrder');
+                order = new ExpressOrder();
+                order.set('trackingNo', data.n);
+              }
+              order.set('data', data);
+              return order.save();
+            }).then(function(){
+              callback(true);
+            }).catch(function(err){
+              callback(false, err.message || 'LeanCloud 保存失败');
+            });
+          } catch(e){ callback(false, e.message); }
+          return;
+        }
+
+        // 3. 自定义 API 写入
+        if(cfg.provider === 'custom' && cfg.customApi){
+          fetch(cfg.customApi.trim(), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          }).then(function(res){
+            if(res.ok) callback(true);
+            else callback(false, 'API 响应非 200');
+          }).catch(function(e){ callback(false, e.message); });
+          return;
+        }
+
+        callback(false, '未找到适用的同步服务');
+      }
+
+      // ==================== 界面渲染与管理交互 ====================
       function updateAdminUI(){
         if(isUnlocked){
           document.body.classList.add('is-admin');
@@ -427,19 +782,6 @@
         }
       }
 
-      // 【核心升级】：每次保存时加入毫秒级时间戳参数，彻底粉碎浏览器缓存，确保无论修改第几次，手机扫码100%呈现最新更新！
-      $('applyBtn').addEventListener('click', function(){
-        applyForm();
-        var cleanNo = currentData.n.replace(/\s+/g,'').toUpperCase();
-        var dataJson = JSON.stringify({
-          s: currentData.s, h: currentData.h, o: currentData.o, d: currentData.d,
-          t: currentData.t, p: currentData.p, rn: currentData.rn, rp: currentData.rp, ra: currentData.ra, e: currentData.e
-        });
-        var encoded = encodeURIComponent(btoa(encodeURIComponent(dataJson)));
-        var timestamp = Date.now();
-        window.location.href = window.location.origin + window.location.pathname + '#no=' + cleanNo + '&v=' + encoded + '&t=' + timestamp;
-      });
-
       function applyForm(){
         currentData.s = $('statusInput').value;
         currentData.h = $('headlineInput').value.trim() || '—';
@@ -450,7 +792,7 @@
         currentData.ra = $('recipientAddressInput').value.trim() || '北京市朝阳区建国路88号';
         currentData.t = $('etaInput').value.trim() || '—';
         currentData.p = $('progressInput').value;
-        currentData.n = $('adminTrackingInput').value.trim() || 'KD' + Math.floor(100000000 + Math.random() * 900000000);
+        currentData.n = $('adminTrackingInput').value.trim().toUpperCase() || 'KD' + Math.floor(100000000 + Math.random() * 900000000);
       }
 
       $('progressInput').addEventListener('input', function(){
@@ -461,6 +803,11 @@
       function getSyncUrl(){
         applyForm();
         var cleanNo = currentData.n.replace(/\s+/g,'').toUpperCase();
+
+        if(isCloudActive()){
+          return window.location.origin + window.location.pathname + '?no=' + cleanNo;
+        }
+
         var dataJson = JSON.stringify({
           s: currentData.s, h: currentData.h, o: currentData.o, d: currentData.d,
           t: currentData.t, p: currentData.p, rn: currentData.rn, rp: currentData.rp, ra: currentData.ra, e: currentData.e
@@ -469,6 +816,36 @@
         var timestamp = Date.now();
         return window.location.origin + window.location.pathname + '#no=' + cleanNo + '&v=' + encoded + '&t=' + timestamp;
       }
+
+      $('applyBtn').addEventListener('click', function(){
+        applyForm();
+        var cleanNo = currentData.n.replace(/\s+/g,'').toUpperCase();
+        saveLocalOrder(currentData);
+
+        if(isCloudActive()){
+          $('applyBtn').disabled = true;
+          $('applyBtn').textContent = '正在同步至云端...';
+          saveCloudOrder(currentData, function(success, errMsg){
+            $('applyBtn').disabled = false;
+            $('applyBtn').textContent = '保存并生成专属二维码';
+            if(success){
+              var fixedUrl = window.location.origin + window.location.pathname + '?no=' + cleanNo;
+              if(window.history && window.history.pushState){
+                window.history.pushState(null, '', fixedUrl);
+              }
+              render();
+              toast('🟢 已同步至云端！此单号二维码永久有效，用户扫码或刷新立显最新状态');
+            } else {
+              toast('云端保存失败：' + (errMsg || '请检查配置'));
+            }
+          });
+        } else {
+          var syncUrl = getSyncUrl();
+          window.location.href = syncUrl;
+          render();
+          toast('已保存至本地！由于未配置云端，修改后需将新二维码重新发给客户。');
+        }
+      });
 
       function renderStandardQRCode(targetText){
         $('qrcode').innerHTML = '';
@@ -487,20 +864,45 @@
         var cleanNo = currentData.n.replace(/\s+/g,'').toUpperCase();
         $('qrModal').classList.add('open');
         $('shortLinkDisplay').value = syncUrl;
-        $('qrTipText').textContent = '当前单号：' + cleanNo + '（微信扫码秒开，第N次修改也能100%实时同步）';
+
+        if(isCloudActive()){
+          $('qrTipText').innerHTML = '<span class="badge-live">云端动态码</span> 当前单号：<b>' + cleanNo + '</b><br>此二维码永久有效！以后修改物流，用户扫此码或刷新秒级呈现最新状态。';
+        } else {
+          $('qrTipText').innerHTML = '当前单号：<b>' + cleanNo + '</b><br><span style="color:var(--warning)">⚠️ 离线模式：数据已打包至本码。若后续再次修改物流，必须重新发新码给用户（建议在后台开启云端同步实现永久同码更新）。</span>';
+        }
         renderStandardQRCode(syncUrl);
       });
 
-      $('closeQrModal').addEventListener('click', function(){ $('qrModal').classList.remove('open'); });
-      
-      $('copyShortLinkBtn').addEventListener('click', function(){
-        var link = $('shortLinkDisplay').value;
+      function copyText(str, msg){
         if(navigator.clipboard && navigator.clipboard.writeText){
-          navigator.clipboard.writeText(link).then(function(){ toast('同步链接已成功复制！'); });
+          navigator.clipboard.writeText(str).then(function(){
+            toast(msg || '查询链接已成功复制！');
+          }).catch(function(){
+            fallbackCopy(str, msg);
+          });
         } else {
-          prompt('请复制以下链接：', link);
+          fallbackCopy(str, msg);
         }
-      });
+      }
+
+      function fallbackCopy(str, msg){
+        try {
+          var ta = document.createElement('textarea');
+          ta.value = str;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+          toast(msg || '查询链接已复制！');
+        } catch(e){
+          toast('复制失败，请在二维码弹窗中长按复制');
+        }
+      }
+
+      $('closeQrModal').addEventListener('click', function(){ $('qrModal').classList.remove('open'); });
+      $('copyShortLinkBtn').addEventListener('click', function(){ copyText($('shortLinkDisplay').value); });
 
       $('downloadQrBtn').addEventListener('click', function(){
         var qrImg = document.querySelector('#qrcode img') || document.querySelector('#qrcode canvas');
@@ -509,28 +911,52 @@
         var cleanNo = currentData.n.replace(/\s+/g,'').toUpperCase();
         var downloadLink = document.createElement('a');
         downloadLink.href = imageUrl;
-        downloadLink.download = cleanNo + '_wx.png';
+        downloadLink.download = cleanNo + '_tracking_qr.png';
         document.body.appendChild(downloadLink);
         downloadLink.click();
         document.body.removeChild(downloadLink);
-        toast('微信标准二维码下载成功！');
+        toast('二维码已保存！');
       });
 
       $('shareBtn').addEventListener('click', function(){
-        var syncUrl = getSyncUrl();
-        if(navigator.clipboard && navigator.clipboard.writeText){
-          navigator.clipboard.writeText(syncUrl).then(function(){
-            toast('同步链接已复制！');
-          }).catch(function(){ prompt('请复制以下链接：', syncUrl); });
-        } else {
-          prompt('请复制以下链接：', syncUrl);
-        }
+        copyText(getSyncUrl(), '查询链接已复制！');
       });
 
       function searchTracking(){
-        var no = $('trackSearch').value.trim();
+        var no = $('trackSearch').value.trim().toUpperCase();
         if(!no){ toast('请输入有效单号'); return; }
-        toast('当前为单号直联模式，请通过对应的二维码或同步链接查看详情');
+
+        if(isCloudActive()){
+          toast('正在云端检索单号 ' + no + '...');
+          queryCloudOrder(no, function(data){
+            if(data){
+              currentData = data;
+              render();
+              if(window.history && window.history.pushState){
+                window.history.pushState(null, '', window.location.origin + window.location.pathname + '?no=' + no);
+              }
+              toast('查询成功，已展示最新物流');
+            } else {
+              checkLocal(no);
+            }
+          });
+        } else {
+          checkLocal(no);
+        }
+
+        function checkLocal(trackingNo){
+          var db = getLocalOrdersDB();
+          if(db && db[trackingNo]){
+            currentData = db[trackingNo];
+            render();
+            toast('已查到本地已存运单 ' + trackingNo);
+          } else if(currentData.n.toUpperCase() === trackingNo){
+            render();
+            toast('已展示当前单号信息');
+          } else {
+            toast('未查询到单号 ' + trackingNo + ' 的记录，请核对单号');
+          }
+        }
       }
 
       $('trackBtn').addEventListener('click', searchTracking);
@@ -604,47 +1030,232 @@
         toast('已新建空白单号：' + currentData.n);
       });
 
+      // ==================== 云端配置交互 ====================
+      function switchProviderUI(provider){
+        $('secGithub').classList.remove('active');
+        $('secLeancloud').classList.remove('active');
+        $('secCustom').classList.remove('active');
+        if(provider === 'github') $('secGithub').classList.add('active');
+        if(provider === 'leancloud') $('secLeancloud').classList.add('active');
+        if(provider === 'custom') $('secCustom').classList.add('active');
+      }
+
+      $('cloudProviderSelect').addEventListener('change', function(){
+        switchProviderUI(this.value);
+      });
+
+      function openCloudModal(){
+        var cfg = getCloudConfig();
+        $('cloudProviderSelect').value = cfg.provider || 'github';
+        switchProviderUI($('cloudProviderSelect').value);
+
+        $('ghOwnerInput').value = cfg.ghOwner || '';
+        $('ghRepoInput').value = cfg.ghRepo || '';
+        $('ghTokenInput').value = cfg.ghToken || '';
+        $('ghBranchInput').value = cfg.ghBranch || 'main';
+
+        $('cloudAppIdInput').value = cfg.appId || '';
+        $('cloudAppKeyInput').value = cfg.appKey || '';
+        $('cloudServerUrlInput').value = cfg.serverUrl || '';
+        $('customApiInput').value = cfg.customApi || '';
+
+        $('cloudModal').classList.add('open');
+      }
+
+      $('cloudSettingBtn').addEventListener('click', openCloudModal);
+      $('openCloudSettingLink').addEventListener('click', openCloudModal);
+      $('closeCloudModal').addEventListener('click', function(){ $('cloudModal').classList.remove('open'); });
+
+      $('saveCloudBtn').addEventListener('click', function(){
+        var p = $('cloudProviderSelect').value;
+        var cfg = {
+          provider: p,
+          ghOwner: $('ghOwnerInput').value.trim(),
+          ghRepo: $('ghRepoInput').value.trim(),
+          ghToken: $('ghTokenInput').value.trim(),
+          ghBranch: $('ghBranchInput').value.trim() || 'main',
+          appId: $('cloudAppIdInput').value.trim(),
+          appKey: $('cloudAppKeyInput').value.trim(),
+          serverUrl: $('cloudServerUrlInput').value.trim(),
+          customApi: $('customApiInput').value.trim()
+        };
+
+        if(p === 'github' && (!cfg.ghOwner || !cfg.ghRepo || !cfg.ghToken)){
+          toast('请填写完整的 GitHub 用户名、仓库名与 Token');
+          return;
+        }
+
+        saveCloudConfig(cfg);
+        initAVClient();
+        updateCloudUIStatus();
+        $('cloudModal').classList.remove('open');
+        toast('云端配置已保存！');
+      });
+
+      $('testCloudBtn').addEventListener('click', function(){
+        var p = $('cloudProviderSelect').value;
+        if(p === 'none'){
+          toast('当前选择为关闭云端');
+          return;
+        }
+        $('testCloudBtn').textContent = '测试中...';
+
+        if(p === 'github'){
+          var owner = $('ghOwnerInput').value.trim();
+          var repo = $('ghRepoInput').value.trim();
+          var token = $('ghTokenInput').value.trim();
+          if(!owner || !repo || !token){
+            $('testCloudBtn').textContent = '测试云端连接';
+            toast('请先填写 GitHub 用户名、仓库名与 Token');
+            return;
+          }
+          fetch('https://api.github.com/repos/' + owner + '/' + repo, {
+            headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json' }
+          }).then(function(res){
+            $('testCloudBtn').textContent = '测试云端连接';
+            if(res.ok){
+              toast('✅ 恭喜！GitHub 仓库连接成功，读写权限正常！');
+            } else {
+              toast('❌ 连接失败：' + res.status + ' 请核对 Token 与仓库名');
+            }
+          }).catch(function(err){
+            $('testCloudBtn').textContent = '测试云端连接';
+            toast('❌ 请求失败：' + err.message);
+          });
+          return;
+        }
+
+        if(p === 'leancloud'){
+          var appId = $('cloudAppIdInput').value.trim();
+          var appKey = $('cloudAppKeyInput').value.trim();
+          var serverUrl = $('cloudServerUrlInput').value.trim();
+          if(!appId || !appKey || !serverUrl){
+            $('testCloudBtn').textContent = '测试云端连接';
+            toast('请完整填写 LeanCloud 凭证');
+            return;
+          }
+          if(!window.AV){
+            $('testCloudBtn').textContent = '测试云端连接';
+            toast('未加载到 LeanCloud SDK');
+            return;
+          }
+          try {
+            window.AV.init({ appId: appId, appKey: appKey, serverURL: serverUrl });
+            var q = new window.AV.Query('ExpressOrder');
+            q.limit(1);
+            q.find().then(function(){
+              $('testCloudBtn').textContent = '测试云端连接';
+              toast('✅ 恭喜！LeanCloud 连接成功！');
+            }).catch(function(err){
+              $('testCloudBtn').textContent = '测试云端连接';
+              toast('❌ 连接失败：' + (err.message || '凭证错误'));
+            });
+          } catch(e){
+            $('testCloudBtn').textContent = '测试云端连接';
+            toast('❌ 初始化出错：' + e.message);
+          }
+          return;
+        }
+
+        if(p === 'custom'){
+          var cApi = $('customApiInput').value.trim();
+          if(!cApi){
+            $('testCloudBtn').textContent = '测试云端连接';
+            toast('请先填写 API 地址');
+            return;
+          }
+          fetch(cApi).then(function(res){
+            $('testCloudBtn').textContent = '测试云端连接';
+            toast('API 响应状态：' + res.status);
+          }).catch(function(err){
+            $('testCloudBtn').textContent = '测试云端连接';
+            toast('❌ 连接失败：' + err.message);
+          });
+        }
+      });
+
       document.addEventListener('keydown', function(e){ 
         if(e.key === 'Escape'){
           closeModal();
           $('qrModal').classList.remove('open');
           $('loginModal').classList.remove('open');
+          $('cloudModal').classList.remove('open');
         }
       });
 
+      // ==================== 页面初始化解析 ====================
       function initFromUrl(){
-        var hash = window.location.hash;
-        if(hash){
-          var matchV = hash.match(/v=([^&]+)/);
-          if(matchV && matchV[1]){
-            try {
-              var decodedJson = decodeURIComponent(atob(decodeURIComponent(matchV[1])));
-              var parsed = JSON.parse(decodedJson);
-              if(parsed && parsed.s){
-                currentData.s = parsed.s;
-                currentData.h = parsed.h;
-                currentData.o = parsed.o;
-                currentData.d = parsed.d;
-                currentData.t = parsed.t;
-                currentData.p = parsed.p;
-                currentData.rn = parsed.rn;
-                currentData.rp = parsed.rp;
-                currentData.ra = parsed.ra;
-                if(parsed.e) currentData.e = parsed.e;
-                var matchNo = hash.match(/no=([^&]+)/);
-                if(matchNo && matchNo[1]) currentData.n = matchNo[1];
+        var searchParams = new URLSearchParams(window.location.search);
+        var queryNo = searchParams.get('no');
+
+        if(queryNo){
+          queryNo = queryNo.trim().toUpperCase();
+          $('trackSearch').value = queryNo;
+          queryCloudOrder(queryNo, function(cloudData){
+            if(cloudData){
+              currentData = cloudData;
+              render();
+              updateAdminUI();
+            } else {
+              parseHash();
+            }
+          });
+          return;
+        }
+
+        parseHash();
+
+        function parseHash(){
+          var hash = window.location.hash;
+          if(hash){
+            var matchV = hash.match(/v=([^&]+)/);
+            if(matchV && matchV[1]){
+              try {
+                var decodedJson = decodeURIComponent(atob(decodeURIComponent(matchV[1])));
+                var parsed = JSON.parse(decodedJson);
+                if(parsed && parsed.s){
+                  currentData.s = parsed.s;
+                  currentData.h = parsed.h;
+                  currentData.o = parsed.o;
+                  currentData.d = parsed.d;
+                  currentData.t = parsed.t;
+                  currentData.p = parsed.p;
+                  currentData.rn = parsed.rn;
+                  currentData.rp = parsed.rp;
+                  currentData.ra = parsed.ra;
+                  if(parsed.e) currentData.e = parsed.e;
+                  var matchNo = hash.match(/no=([^&]+)/);
+                  if(matchNo && matchNo[1]) currentData.n = matchNo[1].toUpperCase();
+                  saveLocalOrder(currentData);
+                  render();
+                  updateAdminUI();
+                  return;
+                }
+              } catch(e){}
+            }
+            var matchNoOnly = hash.match(/no=([^&]+)/);
+            if(matchNoOnly && matchNoOnly[1]){
+              var noVal = matchNoOnly[1].toUpperCase();
+              var db = getLocalOrdersDB();
+              if(db && db[noVal]){
+                currentData = db[noVal];
                 render();
                 updateAdminUI();
                 return;
               }
-            } catch(e){}
+            }
           }
+          render();
+          updateAdminUI();
         }
-        render();
-        updateAdminUI();
       }
 
+      initAVClient();
+      updateCloudUIStatus();
       initFromUrl();
+
+      window.addEventListener('hashchange', initFromUrl);
+      window.addEventListener('popstate', initFromUrl);
     })();
   </script>
 </body>
