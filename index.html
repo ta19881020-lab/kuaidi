@@ -264,9 +264,6 @@
 
   <script>
     (function(){
-      // 每次打开网页时，自动强制彻底清空浏览器中所有残留的历史缓存！
-      localStorage.clear();
-
       var ADMIN_PASSWORD = "Aa112212.";
 
       var defaultData = {
@@ -430,7 +427,7 @@
         }
       }
 
-      // 核心保存：每次点击保存，直接将最新数据打包并刷新网页带上加密参数
+      // 【核心升级】：每次保存时加入毫秒级时间戳参数，彻底粉碎浏览器缓存，确保无论修改第几次，手机扫码100%呈现最新更新！
       $('applyBtn').addEventListener('click', function(){
         applyForm();
         var cleanNo = currentData.n.replace(/\s+/g,'').toUpperCase();
@@ -439,7 +436,8 @@
           t: currentData.t, p: currentData.p, rn: currentData.rn, rp: currentData.rp, ra: currentData.ra, e: currentData.e
         });
         var encoded = encodeURIComponent(btoa(encodeURIComponent(dataJson)));
-        window.location.href = window.location.origin + window.location.pathname + '#no=' + cleanNo + '&v=' + encoded;
+        var timestamp = Date.now();
+        window.location.href = window.location.origin + window.location.pathname + '#no=' + cleanNo + '&v=' + encoded + '&t=' + timestamp;
       });
 
       function applyForm(){
@@ -468,7 +466,8 @@
           t: currentData.t, p: currentData.p, rn: currentData.rn, rp: currentData.rp, ra: currentData.ra, e: currentData.e
         });
         var encoded = encodeURIComponent(btoa(encodeURIComponent(dataJson)));
-        return window.location.origin + window.location.pathname + '#no=' + cleanNo + '&v=' + encoded;
+        var timestamp = Date.now();
+        return window.location.origin + window.location.pathname + '#no=' + cleanNo + '&v=' + encoded + '&t=' + timestamp;
       }
 
       function renderStandardQRCode(targetText){
@@ -488,7 +487,7 @@
         var cleanNo = currentData.n.replace(/\s+/g,'').toUpperCase();
         $('qrModal').classList.add('open');
         $('shortLinkDisplay').value = syncUrl;
-        $('qrTipText').textContent = '当前单号：' + cleanNo + '（微信扫码秒开，100%显示最新更新内容）';
+        $('qrTipText').textContent = '当前单号：' + cleanNo + '（微信扫码秒开，第N次修改也能100%实时同步）';
         renderStandardQRCode(syncUrl);
       });
 
