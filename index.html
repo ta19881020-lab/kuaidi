@@ -51,6 +51,7 @@
     .status-badge.status-派送中{background:#f0fdf4;color:#16a34a}
     .status-badge.status-已揽收{background:var(--surface-2);color:var(--muted)}
     .status-badge.status-异常延误{background:var(--warning-soft);color:var(--warning)}
+    .status-badge.status-已失效{background:var(--danger-soft);color:var(--danger)}
     .progress-labels span.active{color:var(--accent);font-weight:700}
     .status-badge i{width:8px;height:8px;background:currentColor;border-radius:50%;box-shadow:0 0 0 4px color-mix(in srgb,currentColor 15%,transparent)}
     .shipment h2{margin:12px 0 5px;font-size:clamp(23px,3.3vw,34px);letter-spacing:-.03em}
@@ -131,6 +132,24 @@
     .badge-live{background:var(--success-soft);color:var(--success);padding:2px 6px;border-radius:4px;font-weight:700;font-size:11px}
     .provider-section{display:none;margin-top:10px;gap:12px}
     .provider-section.active{display:grid}
+    .orders-panel{border-radius:var(--radius);overflow:hidden;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);display:flex;flex-direction:column}
+    .orders-head{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;background:var(--surface-2)}
+    .orders-head h3{margin:0;font-size:15px;display:flex;align-items:center;gap:6px}
+    .orders-count-badge{background:var(--accent);color:#fff;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:700}
+    .orders-list{list-style:none;margin:0;padding:0;max-height:280px;overflow-y:auto}
+    .order-item{padding:12px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px;transition:background .15s}
+    .order-item:hover{background:var(--surface-2)}
+    .order-item.active{background:var(--accent-soft);border-left:3px solid var(--accent)}
+    .order-info{flex:1;min-width:0}
+    .order-title{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;margin-bottom:2px}
+    .order-meta{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .order-item-actions{display:flex;gap:6px;flex-shrink:0}
+    .order-btn-sm{padding:5px 9px;font-size:11px;border-radius:6px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:600}
+    .order-btn-sm.btn-load{color:var(--accent);border-color:var(--accent-soft)}
+    .order-btn-sm.btn-load:hover{background:var(--accent);color:#fff}
+    .order-btn-sm.btn-del{color:var(--danger);border-color:var(--danger-soft)}
+    .order-btn-sm.btn-del:hover{background:var(--danger);color:#fff}
+    .empty-orders{padding:26px 16px;text-align:center;color:var(--muted);font-size:12px}
   </style>
 </head>
 <body>
@@ -147,7 +166,7 @@
         <div class="searchbar">
           <div class="searchbox">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
-            <input id="trackSearch" value="KD824731095" placeholder="输入快递单号查询..." />
+            <input id="trackSearch" value="EA824731095US" placeholder="输入美国到中国国际单号 (如 EA123456789US)..." />
           </div>
           <button class="primary" id="trackBtn">查询</button>
         </div>
@@ -156,10 +175,10 @@
           <div class="shipment-head">
             <div>
               <div class="status-badge"><i></i><span id="statusText">运输中</span></div>
-              <h2 id="headline">正在前往下一站</h2>
-              <p class="route"><span id="originText">广东省广州市</span> → <span id="destinationText">北京市朝阳区</span></p>
+              <h2 id="headline">国际干线运输中 · 航班已起飞</h2>
+              <p class="route"><span id="originText">美国洛杉矶 (LAX, USA)</span> → <span id="destinationText">中国广东省广州市</span></p>
             </div>
-            <div class="eta"><small>预计送达</small><strong id="etaText">10 月 16 日</strong></div>
+            <div class="eta"><small>预计送达</small><strong id="etaText">10 月 18 日</strong></div>
           </div>
           <div class="progress-wrap">
             <div class="progress-line"><span id="progressBar"></span></div>
@@ -175,7 +194,7 @@
                 <strong id="recipientNameText">张先生</strong>
                 <span id="recipientPhoneText">138****5678</span>
               </div>
-              <p class="recipient-addr" id="recipientAddressText">北京市朝阳区建国路88号现代城A座1201室</p>
+              <p class="recipient-addr" id="recipientAddressText">中国广东省广州市天河区珠江新城冼村路16号保利中心2201室</p>
             </div>
           </div>
 
@@ -183,8 +202,8 @@
             <div class="latest-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h11v10H3zM14 10h4l3 3v4h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg></div>
             <div>
               <small>最新动态</small>
-              <strong id="latestTitle">已离开转运中心</strong>
-              <p><span id="latestLocation">武汉分拨中心</span> · <span id="latestTime">今天 08:42</span></p>
+              <strong id="latestTitle">国际干线运输中 · 航班已起飞</strong>
+              <p><span id="latestLocation">美国洛杉矶国际机场 (LAX)</span> · <span id="latestTime">今天 08:35</span></p>
             </div>
           </div>
         </div>
@@ -208,8 +227,8 @@
             <label>
               快递单号
               <div class="inline-field">
-                <input class="field" id="adminTrackingInput" value="KD824731095" />
-                <button type="button" class="gen-btn" id="generateNoBtn">随机生成</button>
+                <input class="field" id="adminTrackingInput" value="EA824731095US" placeholder="例如 EA123456789US" />
+                <button type="button" class="gen-btn" id="generateNoBtn">生成中美单号</button>
               </div>
             </label>
             <label>当前状态
@@ -219,17 +238,18 @@
                 <option>派送中</option>
                 <option>已送达</option>
                 <option>异常延误</option>
+                <option>已失效</option>
               </select>
             </label>
             <label>状态说明标题<input class="field" id="headlineInput" value="正在前往下一站" /></label>
-            <div class="two"><label>始发地<input class="field" id="originInput" value="广东省广州市" /></label><label>目的地<input class="field" id="destinationInput" value="北京市朝阳区" /></label></div>
+            <div class="two"><label>始发地<input class="field" id="originInput" value="美国洛杉矶国际转运中心 (LAX, USA)" /></label><label>目的地<input class="field" id="destinationInput" value="中国广东省广州市天河区" /></label></div>
             <div class="two">
               <label>收件人姓名<input class="field" id="recipientNameInput" value="张先生" placeholder="例如：李先生" /></label>
               <label>联系电话(输入完整手机号)<input class="field" id="recipientPhoneInput" value="13812345678" placeholder="例如：13812345678" /></label>
             </div>
-            <label>收件详细地址<input class="field" id="recipientAddressInput" value="北京市朝阳区建国路88号现代城A座1201室" placeholder="详细地址" /></label>
-            <label>预计送达<input class="field" id="etaInput" value="10 月 16 日" /></label>
-            <label>运输进度<div class="range-row"><input id="progressInput" type="range" min="0" max="100" value="58" /><output id="progressOutput">58%</output></div></label>
+            <label>收件详细地址<input class="field" id="recipientAddressInput" value="中国广东省广州市天河区珠江新城冼村路16号保利中心2201室" placeholder="详细收件地址" /></label>
+            <label>预计送达<input class="field" id="etaInput" value="10 月 18 日" /></label>
+            <label>运输进度<div class="range-row"><input id="progressInput" type="range" min="0" max="100" value="65" /><output id="progressOutput">65%</output></div></label>
             
             <div class="editor-actions">
               <button class="primary" id="applyBtn">保存并生成专属二维码</button>
@@ -238,9 +258,21 @@
               <button class="secondary full-btn qr-btn" id="qrBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>微信扫码查件 / 保存二维码</button>
               <button class="secondary full-btn share-btn" id="shareBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>一键复制查询链接</button>
               <button class="secondary full-btn cloud-setting-btn" id="cloudSettingBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>☁️ 免费云端实时同步设置</button>
+              <button type="button" class="secondary full-btn danger-btn" id="deleteCurrentOrderBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg>🗑️ 彻底删除当前运单（废除此码）</button>
             </div>
           </div>
         </aside>
+
+        <!-- 管理员运单库列表卡片 -->
+        <div class="card orders-panel" id="ordersPanelCard">
+          <div class="orders-head">
+            <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>已保存的运单列表 <span class="orders-count-badge" id="ordersCountBadge">0</span></h3>
+            <button type="button" class="cloud-btn-link" id="refreshOrdersListBtn">刷新列表</button>
+          </div>
+          <ul class="orders-list" id="ordersListContainer">
+            <li class="empty-orders">暂无已保存运单，保存后将自动归档在此</li>
+          </ul>
+        </div>
       </div>
     </div>
   </main>
@@ -371,6 +403,23 @@
     </div>
   </div>
 
+  <div class="modal" id="deleteConfirmModal" role="dialog" aria-modal="true">
+    <div class="modal-panel" style="max-width:380px">
+      <div class="modal-head">
+        <h2 style="color:var(--danger)">⚠️ 确认彻底删除运单？</h2>
+        <button class="icon-btn" id="closeDeleteModal">×</button>
+      </div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:18px">
+        您即将删除单号为 <b id="delModalTrackNo" style="color:var(--ink)"></b> 的运单。<br />
+        <span style="color:var(--danger);font-weight:600">删除后，该运单数据将从云端及本地彻底抹除，用户扫描此运单的二维码将永久失效！</span>
+      </div>
+      <div class="two">
+        <button type="button" class="secondary" id="cancelDeleteBtn">取消</button>
+        <button type="button" class="primary" id="confirmDeleteBtn" style="background:var(--danger)">确定删除</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
   <script>
@@ -378,21 +427,21 @@
       var ADMIN_PASSWORD = "Aa112212.";
 
       var defaultData = {
-        n: 'KD824731095',
+        n: 'EA824731095US',
         s: '运输中',
-        h: '正在前往下一站',
-        o: '广东省广州市',
-        d: '北京市朝阳区',
-        t: '10 月 16 日',
-        p: 58,
+        h: '国际干线运输中 · 航班已起飞',
+        o: '美国洛杉矶国际转运中心 (LAX, USA)',
+        d: '中国广东省广州市天河区',
+        t: '10 月 18 日',
+        p: '65',
         rn: '张先生',
         rp: '13812345678',
-        ra: '北京市朝阳区建国路88号现代城A座1201室',
+        ra: '中国广东省广州市天河区珠江新城冼村路16号保利中心2201室',
         e: [
-          {d:'今天',t:'08:42',h:'已离开转运中心',l:'武汉分拨中心'},
-          {d:'10 月 13 日',t:'19:26',h:'到达转运中心',l:'武汉分拨中心'},
-          {d:'10 月 12 日',t:'06:15',h:'包裹已离开始发仓',l:'广州市白云分拨中心'},
-          {d:'10 月 11 日',t:'17:40',h:'承运商已揽收包裹',l:'广州市天河区营业点'}
+          {d:'今天',t:'08:35',h:'国际航班已直飞离港，正在飞往中国口岸',l:'美国洛杉矶国际机场 (LAX)'},
+          {d:'10 月 15 日',t:'21:40',h:'包裹已在美方集散中心完成出口报关，航空打板完毕',l:'美国加利福尼亚州洛杉矶国际集散中心'},
+          {d:'10 月 14 日',t:'16:20',h:'转运中心已完成理货并安排出库转运',l:'美国加利福尼亚州安大略分拨中心'},
+          {d:'10 月 13 日',t:'10:15',h:'国际快递包裹已成功收寄揽收，等待转运出境',l:'美国加利福尼亚州洛杉矶操作站'}
         ]
       };
 
@@ -519,67 +568,215 @@
 
       // ==================== 统一云端读写接口 ====================
       function queryCloudOrder(trackingNo, callback){
-        var cfg = getCloudConfig();
-        if(!cfg || !isCloudActive()){
-          callback(null);
+        var cleanNo = (trackingNo || '').replace(/\s+/g,'').toUpperCase();
+        if(!cleanNo){
+          callback(null, false);
           return;
         }
 
-        // 1. GitHub 仓库直连查询
-        if(cfg.provider === 'github'){
-          var owner = cfg.ghOwner.trim();
-          var repo = cfg.ghRepo.trim();
-          var branch = (cfg.ghBranch || 'main').trim();
-          var url = 'https://api.github.com/repos/' + owner + '/' + repo + '/contents/data/' + trackingNo + '.json?ref=' + branch + '&t=' + Date.now();
-          
-          fetch(url, {
-            headers: cfg.ghToken ? { 'Authorization': 'token ' + cfg.ghToken.trim(), 'Accept': 'application/vnd.github.v3+json' } : { 'Accept': 'application/vnd.github.v3+json' }
-          }).then(function(res){
-            if(!res.ok) throw new Error('Not found');
-            return res.json();
-          }).then(function(json){
-            if(json && json.content){
-              var raw = decodeURIComponent(escape(atob(json.content.replace(/\s/g, ''))));
-              callback(JSON.parse(raw));
-            } else {
-              callback(null);
-            }
-          }).catch(function(){
-            var cdnUrl = 'https://cdn.jsdelivr.net/gh/' + owner + '/' + repo + '@' + branch + '/data/' + trackingNo + '.json?t=' + Date.now();
-            fetch(cdnUrl).then(function(res){
-              if(res.ok) return res.json();
-              throw new Error('CDN error');
-            }).then(function(json){
-              callback(json);
-            }).catch(function(){
-              callback(null);
+        var cfg = getCloudConfig();
+        var owner = (cfg && cfg.ghOwner) ? cfg.ghOwner.trim() : '';
+        var repo = (cfg && cfg.ghRepo) ? cfg.ghRepo.trim() : '';
+        var branch = (cfg && cfg.ghBranch) ? cfg.ghBranch.trim() : 'main';
+        var token = (cfg && cfg.ghToken) ? cfg.ghToken.trim() : '';
+
+        if(!owner && window.location.hostname.indexOf('github.io') > -1){
+          owner = window.location.hostname.split('.')[0];
+        }
+        if(!repo){
+          var parts = window.location.pathname.split('/').filter(Boolean);
+          if(parts.length > 0) repo = parts[0];
+        }
+        if(!owner) owner = 'ta19881020-lab';
+        if(!repo) repo = 'kuaidi';
+
+        var provider = cfg ? cfg.provider : 'github';
+
+        // 1. GitHub 仓库查询（支持免 Token 公开读取，客户扫码 100% 实时同步并识别失效）
+        if(provider === 'github' || (!cfg && owner && repo)){
+          var staticUrl = 'data/' + cleanNo + '.json?_nocache=' + Date.now();
+          fetch(staticUrl, { cache: 'no-store' })
+            .then(function(res){
+              if(res.ok) return res.json().then(function(d){ callback(d, false); });
+              if(res.status === 404) throw new Error('404');
+              throw new Error('Static not ok');
+            })
+            .catch(function(errStatic){
+              var apiUrl = 'https://api.github.com/repos/' + owner + '/' + repo + '/contents/data/' + cleanNo + '.json?ref=' + branch + '&_nocache=' + Date.now();
+              var headers = { 'Accept': 'application/vnd.github.v3+json' };
+              if(token) headers['Authorization'] = 'token ' + token;
+
+              fetch(apiUrl, { cache: 'no-store', headers: headers })
+                .then(function(res){
+                  if(res.ok){
+                    return res.json().then(function(json){
+                      if(json && json.content){
+                        var raw = decodeURIComponent(escape(atob(json.content.replace(/\s/g, ''))));
+                        callback(JSON.parse(raw), false);
+                      } else {
+                        callback(null, false);
+                      }
+                    });
+                  }
+                  if(res.status === 404){
+                    callback(null, true);
+                    return;
+                  }
+                  throw new Error('API ' + res.status);
+                })
+                .catch(function(errApi){
+                  if(errStatic.message === '404'){
+                    callback(null, true);
+                    return;
+                  }
+                  var rawUrl = 'https://raw.githubusercontent.com/' + owner + '/' + repo + '/' + branch + '/data/' + cleanNo + '.json?_nocache=' + Date.now();
+                  fetch(rawUrl, { cache: 'no-store' })
+                    .then(function(res){
+                      if(res.ok) return res.json().then(function(d){ callback(d, false); });
+                      if(res.status === 404){ callback(null, true); return; }
+                      throw new Error('Raw not ok');
+                    })
+                    .catch(function(){
+                      var cdnUrl = 'https://cdn.jsdelivr.net/gh/' + owner + '/' + repo + '@' + branch + '/data/' + cleanNo + '.json?_nocache=' + Date.now();
+                      fetch(cdnUrl, { cache: 'no-store' })
+                        .then(function(res){
+                          if(res.ok) return res.json().then(function(d){ callback(d, false); });
+                          throw new Error('CDN error');
+                        })
+                        .catch(function(){
+                          callback(null, errStatic.message === '404');
+                        });
+                    });
+                });
             });
-          });
           return;
         }
 
         // 2. LeanCloud 查询
-        if(cfg.provider === 'leancloud' && window.AV){
+        if(provider === 'leancloud' && window.AV){
           try {
             var query = new window.AV.Query('ExpressOrder');
-            query.equalTo('trackingNo', trackingNo);
+            query.equalTo('trackingNo', cleanNo);
             query.first().then(function(order){
-              callback(order && order.get('data') ? order.get('data') : null);
-            }).catch(function(){ callback(null); });
-          } catch(e){ callback(null); }
+              if(order && order.get('data')){
+                callback(order.get('data'), false);
+              } else {
+                callback(null, true);
+              }
+            }).catch(function(){ callback(null, false); });
+          } catch(e){ callback(null, false); }
           return;
         }
 
         // 3. 自定义 API 查询
-        if(cfg.provider === 'custom' && cfg.customApi){
-          var customUrl = cfg.customApi.trim() + (cfg.customApi.indexOf('?') > -1 ? '&' : '?') + 'no=' + encodeURIComponent(trackingNo);
-          fetch(customUrl).then(function(res){ return res.json(); }).then(function(data){
-            callback(data);
-          }).catch(function(){ callback(null); });
+        if(provider === 'custom' && cfg.customApi){
+          var customUrl = cfg.customApi.trim() + (cfg.customApi.indexOf('?') > -1 ? '&' : '?') + 'no=' + encodeURIComponent(cleanNo) + '&_t=' + Date.now();
+          fetch(customUrl, { cache: 'no-store' }).then(function(res){
+            if(res.ok) return res.json().then(function(d){ callback(d, false); });
+            if(res.status === 404){ callback(null, true); return; }
+            callback(null, false);
+          }).catch(function(){ callback(null, false); });
           return;
         }
 
-        callback(null);
+        callback(null, false);
+      }
+
+      // ==================== 云端删除接口 ====================
+      function deleteCloudOrder(trackingNo, callback){
+        var cfg = getCloudConfig();
+        if(!cfg || !isCloudActive()){
+          callback(true);
+          return;
+        }
+
+        // 1. GitHub 仓库直连物理删除
+        if(cfg.provider === 'github'){
+          var owner = cfg.ghOwner.trim();
+          var repo = cfg.ghRepo.trim();
+          var token = cfg.ghToken.trim();
+          var branch = (cfg.ghBranch || 'main').trim();
+          var path = 'data/' + trackingNo + '.json';
+          var apiUrl = 'https://api.github.com/repos/' + owner + '/' + repo + '/contents/' + path;
+
+          fetch(apiUrl + '?ref=' + encodeURIComponent(branch) + '&_nocache=' + Date.now(), {
+            cache: 'no-store',
+            headers: {
+              'Authorization': 'token ' + token,
+              'Accept': 'application/vnd.github.v3+json'
+            }
+          }).then(function(res){
+            if(res.status === 404){
+              callback(true);
+              return null;
+            }
+            if(!res.ok) throw new Error('无法查询文件版本');
+            return res.json().then(function(f){ return f.sha; });
+          }).then(function(sha){
+            if(!sha) return;
+            var bodyObj = {
+              message: 'Delete tracking order: ' + trackingNo,
+              sha: sha,
+              branch: branch
+            };
+            return fetch(apiUrl, {
+              method: 'DELETE',
+              headers: {
+                'Authorization': 'token ' + token,
+                'Content-Type': 'application/json',
+                'Accept': 'application/vnd.github.v3+json'
+              },
+              body: JSON.stringify(bodyObj)
+            }).then(function(delRes){
+              if(delRes.ok){
+                callback(true);
+              } else {
+                delRes.json().then(function(err){ callback(false, err.message || 'GitHub 删除失败'); });
+              }
+            });
+          }).catch(function(err){
+            callback(false, err.message);
+          });
+          return;
+        }
+
+        // 2. LeanCloud 删除
+        if(cfg.provider === 'leancloud' && window.AV){
+          try {
+            var q = new window.AV.Query('ExpressOrder');
+            q.equalTo('trackingNo', trackingNo);
+            q.first().then(function(order){
+              if(order) return order.destroy();
+            }).then(function(){
+              callback(true);
+            }).catch(function(err){
+              callback(false, err.message);
+            });
+          } catch(e){ callback(false, e.message); }
+          return;
+        }
+
+        // 3. 自定义 API 删除
+        if(cfg.provider === 'custom' && cfg.customApi){
+          var customUrl = cfg.customApi.trim() + (cfg.customApi.indexOf('?') > -1 ? '&' : '?') + 'no=' + encodeURIComponent(trackingNo);
+          fetch(customUrl, { method: 'DELETE' }).then(function(res){
+            if(res.ok) callback(true);
+            else callback(false, 'API 删除失败');
+          }).catch(function(e){ callback(false, e.message); });
+          return;
+        }
+
+        callback(true);
+      }
+
+      function deleteLocalOrder(trackingNo){
+        try {
+          var db = getLocalOrdersDB();
+          if(db[trackingNo]){
+            delete db[trackingNo];
+            localStorage.setItem(STORAGE_KEY_DB, JSON.stringify(db));
+          }
+        } catch(e){}
       }
 
       function saveCloudOrder(data, callback){
@@ -600,7 +797,6 @@
           var jsonStr = JSON.stringify(data, null, 2);
           var b64Content = btoa(unescape(encodeURIComponent(jsonStr)));
 
-          // 彻底解决浏览器缓存导致 SHA 不匹配的 Bug (强制 no-store 与时间戳)
           function getFreshSha(cb){
             fetch(apiUrl + '?ref=' + encodeURIComponent(branch) + '&_nocache=' + Date.now(), {
               cache: 'no-store',
@@ -640,7 +836,6 @@
                 callback(true);
               } else {
                 res.json().then(function(err){
-                  // 如果报 409 冲突或者 does not match，尝试提取目标 SHA 自动重试一次
                   if(!isRetry && (res.status === 409 || (err.message && err.message.indexOf('does not match') > -1))){
                     var matchSha = err.message ? err.message.match(/does not match ([a-f0-9]{40})/i) : null;
                     if(matchSha && matchSha[1]){
@@ -762,17 +957,21 @@
         toast('已退出管理员模式');
       });
 
+      function generateUsToCnTrackingNo(){
+        var prefixes = ['EA', 'EC', 'CW', 'CP'];
+        var prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+        var rand9 = Math.floor(100000000 + Math.random() * 900000000);
+        return prefix + rand9 + 'US';
+      }
+
       $('generateNoBtn').addEventListener('click', function(){
-        var prefix = 'KD';
-        var randNum = Math.floor(100000000 + Math.random() * 900000000);
-        var newNo = prefix + randNum;
+        var newNo = generateUsToCnTrackingNo();
         $('adminTrackingInput').value = newNo;
-        toast('已生成新单号：' + newNo);
+        toast('已生成美国至中国标准单号：' + newNo);
       });
 
       function render(){
-        // 智能防呆纠偏：若标题为已送达但状态是运输中，自动统一为已送达
-        if(/已送达|签收|已签收/.test(currentData.h) && currentData.s !== '已送达'){
+        if(/已送达|签收|已签收/.test(currentData.h) && currentData.s !== '已送达' && currentData.s !== '已失效'){
           currentData.s = '已送达';
           currentData.p = 100;
           if(!currentData.t || currentData.t.indexOf('月') > -1) currentData.t = '已签收';
@@ -791,7 +990,6 @@
         $('progressBar').style.width = currentData.p + '%';
         $('progressOutput').textContent = currentData.p + '%';
 
-        // 进度节点高亮
         var pLabels = document.querySelectorAll('.progress-labels span');
         if(pLabels.length === 4){
           var pVal = Number(currentData.p);
@@ -818,21 +1016,25 @@
         $('adminTrackingInput').value = currentData.n;
 
         var events = currentData.e || [];
-        $('timeline').innerHTML = events.map(function(ev, i){
-          return '<li class="event ' + (i === 0 ? 'current' : '') + '">' +
-            '<time><b>' + esc(ev.d) + '</b>' + esc(ev.t) + '</time>' +
-            '<span class="dot"></span>' +
-            '<div class="event-body">' +
-              '<strong>' + esc(ev.h) + '</strong>' +
-              '<p>' + esc(ev.l) + '</p>' +
-              '<div class="event-tools">' +
-                '<button data-edit="' + i + '">编辑</button>' +
-                '<button data-up="' + i + '">上移</button>' +
-                '<button data-delete="' + i + '">删除</button>' +
+        if(currentData.s === '已失效'){
+          $('timeline').innerHTML = '<li class="empty-orders" style="border:1px dashed var(--danger);border-radius:12px;background:var(--danger-soft);color:var(--danger);font-weight:600;padding:26px 18px;text-align:center;line-height:1.6">⚠️ 该运单已被管理员彻底删除作废！<br><span style="font-size:12px;font-weight:normal;color:var(--muted)">原查询二维码已永久失效，已停止物流实时追踪。</span></li>';
+        } else {
+          $('timeline').innerHTML = events.map(function(ev, i){
+            return '<li class="event ' + (i === 0 ? 'current' : '') + '">' +
+              '<time><b>' + esc(ev.d) + '</b>' + esc(ev.t) + '</time>' +
+              '<span class="dot"></span>' +
+              '<div class="event-body">' +
+                '<strong>' + esc(ev.h) + '</strong>' +
+                '<p>' + esc(ev.l) + '</p>' +
+                '<div class="event-tools">' +
+                  '<button data-edit="' + i + '">编辑</button>' +
+                  '<button data-up="' + i + '">上移</button>' +
+                  '<button data-delete="' + i + '">删除</button>' +
+                '</div>' +
               '</div>' +
-            '</div>' +
-          '</li>';
-        }).join('');
+            '</li>';
+          }).join('');
+        }
 
         $('eventCount').textContent = events.length + ' 条记录';
         if(events[0]){
@@ -851,10 +1053,10 @@
         '运输中': { h: '正在前往下一站', p: 55, t: '预计 1~2 天送达' },
         '派送中': { h: '快递员正在派送中', p: 85, t: '预计今天送达' },
         '已送达': { h: '包裹已签收，感谢使用', p: 100, t: '已签收' },
-        '异常延误': { h: '包裹运输异常，正在加急处理', p: 50, t: '延误处理中' }
+        '异常延误': { h: '包裹运输异常，正在加急处理', p: 50, t: '延误处理中' },
+        '已失效': { h: '该运单已删除或已失效', p: 0, t: '已作废' }
       };
 
-      // 管理后台下拉联动：选择状态自动同步标题、进度条和预计时间
       $('statusInput').addEventListener('change', function(){
         var preset = statusPresets[this.value];
         if(preset){
@@ -866,13 +1068,134 @@
         }
       });
 
+      // ==================== 运单列表管理与删除逻辑 ====================
+      var pendingDeleteNo = '';
+
+      function renderOrdersList(){
+        var db = getLocalOrdersDB();
+        var keys = Object.keys(db);
+        var container = $('ordersListContainer');
+        $('ordersCountBadge').textContent = keys.length;
+
+        if(keys.length === 0){
+          container.innerHTML = '<li class="empty-orders">暂无已保存运单，在上方保存后将自动归档在此</li>';
+          return;
+        }
+
+        keys.reverse();
+        container.innerHTML = keys.map(function(no){
+          var item = db[no];
+          var isCur = currentData.n === no ? ' active' : '';
+          var s = item.s || '运输中';
+          var rn = item.rn || '未设置收件人';
+          var rp = maskPhone(item.rp);
+          return '<li class="order-item' + isCur + '">' +
+            '<div class="order-info">' +
+              '<div class="order-title"><span>' + esc(no) + '</span><span class="status-badge status-' + esc(s) + '" style="padding:2px 8px;font-size:11px">' + esc(s) + '</span></div>' +
+              '<div class="order-meta">' + esc(rn) + ' (' + esc(rp) + ') · ' + esc(item.o || '—') + ' → ' + esc(item.d || '—') + '</div>' +
+            '</div>' +
+            '<div class="order-item-actions">' +
+              '<button type="button" class="order-btn-sm btn-load" data-load-no="' + esc(no) + '">编辑</button>' +
+              '<button type="button" class="order-btn-sm btn-del" data-del-no="' + esc(no) + '">删除</button>' +
+            '</div>' +
+          '</li>';
+        }).join('');
+      }
+
+      $('ordersListContainer').addEventListener('click', function(e){
+        var loadBtn = e.target.closest('[data-load-no]');
+        if(loadBtn){
+          var loadNo = loadBtn.getAttribute('data-load-no');
+          loadOrderToForm(loadNo);
+          return;
+        }
+        var delBtn = e.target.closest('[data-del-no]');
+        if(delBtn){
+          var delNo = delBtn.getAttribute('data-del-no');
+          openDeleteModal(delNo);
+          return;
+        }
+      });
+
+      $('refreshOrdersListBtn').addEventListener('click', function(){
+        renderOrdersList();
+        toast('运单列表已刷新');
+      });
+
+      function loadOrderToForm(trackingNo){
+        var db = getLocalOrdersDB();
+        if(db[trackingNo]){
+          currentData = JSON.parse(JSON.stringify(db[trackingNo]));
+          render();
+          renderOrdersList();
+          if(window.history && window.history.pushState && isCloudActive()){
+            window.history.pushState(null, '', window.location.origin + window.location.pathname + '?no=' + trackingNo);
+          }
+          toast('已载入运单 ' + trackingNo + '，可直接修改');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }
+
+      function openDeleteModal(trackingNo){
+        pendingDeleteNo = trackingNo;
+        $('delModalTrackNo').textContent = trackingNo;
+        $('deleteConfirmModal').classList.add('open');
+      }
+
+      function closeDeleteModal(){
+        $('deleteConfirmModal').classList.remove('open');
+        pendingDeleteNo = '';
+      }
+
+      $('closeDeleteModal').addEventListener('click', closeDeleteModal);
+      $('cancelDeleteBtn').addEventListener('click', closeDeleteModal);
+
+      $('deleteCurrentOrderBtn').addEventListener('click', function(){
+        openDeleteModal(currentData.n);
+      });
+
+      $('confirmDeleteBtn').addEventListener('click', function(){
+        if(!pendingDeleteNo) return;
+        var noToDel = pendingDeleteNo;
+        $('confirmDeleteBtn').disabled = true;
+        $('confirmDeleteBtn').textContent = '正在删除...';
+
+        deleteCloudOrder(noToDel, function(success, errMsg){
+          $('confirmDeleteBtn').disabled = false;
+          $('confirmDeleteBtn').textContent = '确定删除';
+          closeDeleteModal();
+
+          if(success){
+            deleteLocalOrder(noToDel);
+            renderOrdersList();
+
+            if(currentData.n === noToDel){
+              currentData.s = '已失效';
+              currentData.h = '该运单已删除或已失效';
+              currentData.o = '—';
+              currentData.d = '—';
+              currentData.t = '已作废';
+              currentData.p = 0;
+              currentData.rn = '—';
+              currentData.rp = '—';
+              currentData.ra = '此运单已被管理员彻底删除，原查询二维码已作废。';
+              currentData.e = [];
+              render();
+            }
+
+            toast('🗑️ 运单 ' + noToDel + ' 已彻底删除，该二维码已失效！');
+          } else {
+            toast('删除失败：' + (errMsg || '请检查网络或配置'));
+          }
+        });
+      });
+
       function applyForm(){
         var sVal = $('statusInput').value;
         var hVal = $('headlineInput').value.trim() || '—';
         var pVal = Number($('progressInput').value);
         var tVal = $('etaInput').value.trim() || '—';
 
-        // 智能防呆纠偏：如果大标题写了已送达，状态和进度条自动对齐为已送达和100%
         if(/已送达|签收|已签收/.test(hVal)){
           sVal = '已送达';
           pVal = 100;
@@ -893,10 +1216,10 @@
         currentData.d = $('destinationInput').value.trim() || '—';
         currentData.rn = $('recipientNameInput').value.trim() || '张先生';
         currentData.rp = $('recipientPhoneInput').value.trim() || '—';
-        currentData.ra = $('recipientAddressInput').value.trim() || '北京市朝阳区建国路88号';
+        currentData.ra = $('recipientAddressInput').value.trim() || '中国广东省广州市天河区珠江新城冼村路16号';
         currentData.t = tVal;
         currentData.p = pVal;
-        currentData.n = $('adminTrackingInput').value.trim().toUpperCase() || 'KD' + Math.floor(100000000 + Math.random() * 900000000);
+        currentData.n = $('adminTrackingInput').value.trim().toUpperCase() || generateUsToCnTrackingNo();
       }
 
       $('progressInput').addEventListener('input', function(){
@@ -938,6 +1261,7 @@
                 window.history.pushState(null, '', fixedUrl);
               }
               render();
+              renderOrdersList();
               toast('🟢 已同步至云端！此单号二维码永久有效，用户扫码或刷新立显最新状态');
             } else {
               toast('云端保存失败：' + (errMsg || '请检查配置'));
@@ -947,6 +1271,7 @@
           var syncUrl = getSyncUrl();
           window.location.href = syncUrl;
           render();
+          renderOrdersList();
           toast('已保存至本地！由于未配置云端，修改后需将新二维码重新发给客户。');
         }
       });
@@ -1030,35 +1355,41 @@
         var no = $('trackSearch').value.trim().toUpperCase();
         if(!no){ toast('请输入有效单号'); return; }
 
-        if(isCloudActive()){
-          toast('正在云端检索单号 ' + no + '...');
-          queryCloudOrder(no, function(data){
-            if(data){
-              currentData = data;
-              render();
-              if(window.history && window.history.pushState){
-                window.history.pushState(null, '', window.location.origin + window.location.pathname + '?no=' + no);
-              }
-              toast('查询成功，已展示最新物流');
-            } else {
-              checkLocal(no);
+        toast('正在查询单号 ' + no + '...');
+        queryCloudOrder(no, function(data, isDeleted){
+          if(data){
+            currentData = data;
+            saveLocalOrder(currentData);
+            render();
+            renderOrdersList();
+            if(window.history && window.history.pushState){
+              window.history.pushState(null, '', window.location.origin + window.location.pathname + '?no=' + no);
             }
-          });
-        } else {
-          checkLocal(no);
-        }
+            toast('查询成功，已展示最新物流');
+          } else if(isDeleted){
+            deleteLocalOrder(no);
+            renderInvalidState(no);
+            renderOrdersList();
+            toast('⚠️ 该运单已被删除，二维码已失效！');
+          } else {
+            checkLocal(no);
+          }
+        });
 
         function checkLocal(trackingNo){
           var db = getLocalOrdersDB();
           if(db && db[trackingNo]){
             currentData = db[trackingNo];
             render();
+            renderOrdersList();
             toast('已查到本地已存运单 ' + trackingNo);
           } else if(currentData.n.toUpperCase() === trackingNo){
             render();
             toast('已展示当前单号信息');
           } else {
-            toast('未查询到单号 ' + trackingNo + ' 的记录，请核对单号');
+            renderInvalidState(trackingNo);
+            renderOrdersList();
+            toast('未查询到单号 ' + trackingNo + ' 的有效记录或已作废');
           }
         }
       }
@@ -1120,18 +1451,21 @@
       });
 
       $('resetBtn').addEventListener('click', function(){
-        var randNum = Math.floor(100000000 + Math.random() * 900000000);
+        var newNo = generateUsToCnTrackingNo();
         currentData = JSON.parse(JSON.stringify(defaultData));
-        currentData.n = 'KD' + randNum;
-        currentData.h = '运单已创建，等待揽收';
+        currentData.n = newNo;
+        currentData.h = '国际快递已创建，等待美国操作站收寄揽收';
         currentData.s = '已揽收';
-        currentData.p = 20;
+        currentData.p = '15';
+        currentData.o = '美国洛杉矶国际转运中心 (LAX, USA)';
+        currentData.d = '中国北京市朝阳区';
+        currentData.t = '预计 5~7 天送达';
         currentData.rn = '李先生';
         currentData.rp = '13912348899';
-        currentData.ra = '广东省深圳市南山区高新科技园南区T3栋';
-        currentData.e = [{d:'今天', t:'刚刚', h:'运单已生成，正在等待承运商揽收', l: currentData.o}];
+        currentData.ra = '中国北京市朝阳区建国路88号华贸中心写字楼1座1808室';
+        currentData.e = [{d:'今天', t:'刚刚', h:'中美跨境特快专递已生成，等待美国操作站揽收上机', l: currentData.o}];
         render();
-        toast('已新建空白单号：' + currentData.n);
+        toast('已新建美国到中国标准空白单：' + currentData.n);
       });
 
       // ==================== 云端配置交互 ====================
@@ -1288,6 +1622,21 @@
       });
 
       // ==================== 页面初始化解析 ====================
+      function renderInvalidState(trackingNo){
+        currentData.n = trackingNo || '—';
+        currentData.s = '已失效';
+        currentData.h = '该运单已删除或已失效';
+        currentData.o = '—';
+        currentData.d = '—';
+        currentData.t = '已作废';
+        currentData.p = 0;
+        currentData.rn = '—';
+        currentData.rp = '—';
+        currentData.ra = '此运单已被管理员彻底删除，原查询二维码已作废。';
+        currentData.e = [];
+        render();
+      }
+
       function initFromUrl(){
         var searchParams = new URLSearchParams(window.location.search);
         var queryNo = searchParams.get('no');
@@ -1295,13 +1644,32 @@
         if(queryNo){
           queryNo = queryNo.trim().toUpperCase();
           $('trackSearch').value = queryNo;
-          queryCloudOrder(queryNo, function(cloudData){
+          queryCloudOrder(queryNo, function(cloudData, isDeleted){
             if(cloudData){
               currentData = cloudData;
+              saveLocalOrder(currentData);
               render();
+              renderOrdersList();
               updateAdminUI();
+            } else if(isDeleted){
+              deleteLocalOrder(queryNo);
+              renderInvalidState(queryNo);
+              renderOrdersList();
+              updateAdminUI();
+              toast('⚠️ 该运单已被删除，二维码已失效！');
             } else {
-              parseHash();
+              var db = getLocalOrdersDB();
+              if(db && db[queryNo]){
+                currentData = db[queryNo];
+                render();
+                renderOrdersList();
+                updateAdminUI();
+              } else {
+                renderInvalidState(queryNo);
+                renderOrdersList();
+                updateAdminUI();
+                toast('⚠️ 未查询到该运单或二维码已失效');
+              }
             }
           });
           return;
@@ -1350,12 +1718,14 @@
             }
           }
           render();
+          renderOrdersList();
           updateAdminUI();
         }
       }
 
       initAVClient();
       updateCloudUIStatus();
+      renderOrdersList();
       initFromUrl();
 
       window.addEventListener('hashchange', initFromUrl);
