@@ -211,7 +211,7 @@
             <label>运输进度<div class="range-row"><input id="progressInput" type="range" min="0" max="100" value="58" /><output id="progressOutput">58%</output></div></label>
             
             <div class="editor-actions">
-              <button class="primary" id="applyBtn">保存并更新数据</button>
+              <button class="primary" id="applyBtn">保存运单数据</button>
               <button class="secondary" id="resetBtn">新建空白单</button>
               <button class="secondary full-btn" id="addBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 5v14M5 12h14"/></svg>新增物流动态节点</button>
               <button class="secondary full-btn qr-btn" id="qrBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>微信扫码查件 / 保存二维码</button>
@@ -513,7 +513,11 @@
         });
       }
 
-      $('applyBtn').addEventListener('click', applyForm);
+      $('applyBtn').addEventListener('click', function(){
+        applyForm();
+        toast('数据已成功保存！');
+      });
+
       $('progressInput').addEventListener('input', function(){
         $('progressOutput').textContent = this.value + '%';
         $('progressBar').style.width = this.value + '%';
@@ -522,6 +526,7 @@
       function getBaseUrl(){
         applyForm();
         var cleanNo = currentData.n.replace(/\s+/g,'').toUpperCase();
+        // 只编码干净的网址和单号路由，保证二维码绝对清爽疏密适中
         return window.location.origin + window.location.pathname + '#no=' + cleanNo;
       }
 
@@ -535,8 +540,7 @@
           .catch(function(){ callback(longUrl); });
       }
 
-      // 改用微信标准的 H 级纠错与高清晰度渲染，生成和微信完全一样的标准方块二维码
-      function renderStandardQRCode(targetText){
+      function renderCleanQRCode(targetText){
         $('qrcode').innerHTML = '';
         new QRCode($('qrcode'), {
           text: targetText,
@@ -544,7 +548,7 @@
           height: 200,
           colorDark: '#000000',
           colorLight: '#ffffff',
-          correctLevel: QRCode.CorrectLevel.H
+          correctLevel: QRCode.CorrectLevel.M
         });
       }
 
@@ -552,13 +556,13 @@
         var baseUri = getBaseUrl();
         var cleanNo = currentData.n.replace(/\s+/g,'').toUpperCase();
         $('qrModal').classList.add('open');
-        $('shortLinkDisplay').value = '正在生成标准微信二维码...';
+        $('shortLinkDisplay').value = '正在生成标准微信短链二维码...';
         $('qrTipText').textContent = '当前单号：' + cleanNo + '（微信扫码秒开）';
         $('qrcode').innerHTML = '<div style="font-size:12px;color:#888;">正在生成二维码...</div>';
 
         fetchShortUrl(baseUri, function(finalUrl){
           $('shortLinkDisplay').value = finalUrl;
-          renderStandardQRCode(finalUrl);
+          renderCleanQRCode(finalUrl);
         });
       });
 
@@ -702,18 +706,6 @@
       function initFromUrl(){
         var hash = window.location.hash;
         if(hash){
-          var matchData = hash.match(/data=([^&]+)/);
-          if(matchData && matchData[1]){
-            try {
-              var decoded = JSON.parse(decodeURIComponent(matchData[1]));
-              if(decoded && decoded.n){
-                currentData = decoded;
-                render();
-                updateAdminUI();
-                return;
-              }
-            } catch(e){}
-          }
           var matchNo = hash.match(/no=([^&]+)/);
           if(matchNo && matchNo[1]){
             loadPackageFromStorage(matchNo[1], function(data){
