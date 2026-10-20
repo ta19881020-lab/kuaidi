@@ -211,7 +211,7 @@
             <label>运输进度<div class="range-row"><input id="progressInput" type="range" min="0" max="100" value="58" /><output id="progressOutput">58%</output></div></label>
             
             <div class="editor-actions">
-              <button class="primary" id="applyBtn">保存并生成专属二维码</button>
+              <button class="primary" id="applyBtn">保存并更新数据</button>
               <button class="secondary" id="resetBtn">新建空白单</button>
               <button class="secondary full-btn" id="addBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 5v14M5 12h14"/></svg>新增物流动态节点</button>
               <button class="secondary full-btn qr-btn" id="qrBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>微信扫码查件 / 保存二维码</button>
@@ -317,10 +317,8 @@
         toast.t = setTimeout(function(){ $('toast').classList.remove('show'); }, 2500);
       }
 
-      // 完美兼容国内网络的本地+URL加密同步方案（100%秒级生效，永不超时）
       function loadPackageFromStorage(trackingNo, callback){
         var cleanNo = trackingNo.replace(/\s+/g,'').toUpperCase();
-        // 1. 先查本地缓存
         try {
           var localVal = localStorage.getItem('pkg_data_' + cleanNo);
           if(localVal){
@@ -511,15 +509,7 @@
         savePackageToStorage(currentData, function(success){
           updateSavedSelect();
           render();
-          toast('单号 ' + currentData.n + ' 已成功更新！');
-          
-          // 自动将数据压缩打包到网址后缀中，用户扫码打开时自动解密显示最新内容
-          setTimeout(function(){
-            var cleanNo = currentData.n.replace(/\s+/g,'').toUpperCase();
-            var jsonStr = encodeURIComponent(JSON.stringify(currentData));
-            window.location.href = window.location.origin + window.location.pathname + '#no=' + cleanNo + '&data=' + jsonStr;
-            window.location.reload();
-          }, 600);
+          toast('单号 ' + currentData.n + ' 保存成功！');
         });
       }
 
@@ -712,7 +702,6 @@
       function initFromUrl(){
         var hash = window.location.hash;
         if(hash){
-          // 优先解析网址里自带的最新加密数据
           var matchData = hash.match(/data=([^&]+)/);
           if(matchData && matchData[1]){
             try {
